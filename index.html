@@ -1240,6 +1240,9 @@
             <button class="btn-gdrive-connect" id="gdriveConnectBtn" onclick="connectGoogleDrive()">
               🔗 Googleドライブに接続
             </button>
+            <button class="btn-gdrive-sync" id="gdriveSyncBtn" onclick="manualSyncFromDrive()" style="display:none; background: linear-gradient(135deg, #4ECDC4, #44A08D); margin-top: 0.5rem;">
+              ☁️ ドライブから読み込み
+            </button>
             <button class="btn-gdrive-disconnect" id="gdriveDisconnectBtn" onclick="disconnectGoogleDrive()" style="display:none;">
               🔌 接続解除
             </button>
@@ -2195,17 +2198,42 @@ ${texts || '(メモなし)'}
       const status = document.getElementById('gdriveStatus');
       const connectBtn = document.getElementById('gdriveConnectBtn');
       const disconnectBtn = document.getElementById('gdriveDisconnectBtn');
+      const syncBtn = document.getElementById('gdriveSyncBtn');
       
       if (isGdriveConnected()) {
         status.innerHTML = '<span class="status-icon">✅</span><span class="status-text">接続済み</span>';
         status.className = 'gdrive-status connected';
         connectBtn.style.display = 'none';
         disconnectBtn.style.display = 'inline-block';
+        if (syncBtn) syncBtn.style.display = 'inline-block';
       } else {
         status.innerHTML = '<span class="status-icon">❌</span><span class="status-text">未接続</span>';
         status.className = 'gdrive-status disconnected';
         connectBtn.style.display = 'inline-block';
         disconnectBtn.style.display = 'none';
+        if (syncBtn) syncBtn.style.display = 'none';
+      }
+    }
+    
+    // 手動でドライブから読み込み
+    async function manualSyncFromDrive() {
+      showToast('ドライブからデータを読み込み中...', '');
+      
+      try {
+        // GAPIを再読み込み（トークンが切れている場合対応）
+        await loadGoogleApi();
+        const clientId = getGdriveClientId();
+        if (clientId) {
+          await initGoogleAuth(clientId);
+        }
+      } catch (error) {
+        // 既に接続済みなら問題ない
+        console.log('Re-auth attempt:', error);
+      }
+      
+      const success = await loadFromGoogleDrive();
+      if (!success) {
+        showToast('ドライブにデータがないみたい', 'error');
       }
     }
 
@@ -2282,7 +2310,7 @@ ${texts || '(メモなし)'}
               tokenClient = google.accounts.oauth2.initTokenClient({
                 client_id: clientId,
                 scope: 'https://www.googleapis.com/auth/drive.file',
-                callback: (response) => {
+                callback: async (response) => {
                   console.log('OAuth callback received:', response);
                   if (response.error) {
                     console.error('OAuth error:', response);
@@ -2293,7 +2321,13 @@ ${texts || '(メモなし)'}
                     console.log('Access token received successfully');
                     localStorage.setItem('tavilog_gdrive_connected', 'true');
                     updateGdriveStatus();
-                    syncToGoogleDrive();
+                    
+                    // まずドライブからデータを読み込む
+                    const loaded = await loadFromGoogleDrive();
+                    if (!loaded) {
+                      // データがなければ現在のローカルデータをアップロード
+                      await syncToGoogleDrive();
+                    }
                     resolve();
                   }
                 },
@@ -2408,11 +2442,45 @@ ${texts || '(メモなし)'}
     }
 
     async function loadFromGoogleDrive() {
-      if (!isGdriveConnected() || getStorageType() !== 'gdrive') return;
+      if (!isGdriveConnected() || getStorageType() !== 'gdrive') return false;
 
       try {
-        const fileId = localStorage.getItem('tavilog_gdrive_file_id');
-        if (!fileId) return;
+        let fileId = localStorage.getItem('tavilog_gdrive_file_id');
+        
+        // ファイルIDがない場合、フォルダからファイルを探す
+        if (!fileId) {
+          let folderId = localStorage.getItem('tavilog_gdrive_folder_id');
+          
+          // フォルダを探す
+          if (!folderId) {
+            const folderResponse = await gapi.client.drive.files.list({
+              q: "name='TaviLog' and mimeType='application/vnd.google-apps.folder' and trashed=false",
+              fields: 'files(id, name)'
+            });
+            
+            if (folderResponse.result.files.length > 0) {
+              folderId = folderResponse.result.files[0].id;
+              localStorage.setItem('tavilog_gdrive_folder_id', folderId);
+            } else {
+              console.log('TaviLog folder not found');
+              return false;
+            }
+          }
+          
+          // フォルダ内のファイルを探す
+          const fileResponse = await gapi.client.drive.files.list({
+            q: `'${folderId}' in parents and name='tavilog-data.json' and trashed=false`,
+            fields: 'files(id, name)'
+          });
+          
+          if (fileResponse.result.files.length > 0) {
+            fileId = fileResponse.result.files[0].id;
+            localStorage.setItem('tavilog_gdrive_file_id', fileId);
+          } else {
+            console.log('tavilog-data.json not found');
+            return false;
+          }
+        }
 
         const response = await gapi.client.drive.files.get({
           fileId: fileId,
@@ -2420,19 +2488,86 @@ ${texts || '(メモなし)'}
         });
 
         const data = response.result;
-        if (data.trips && data.materials) {
-          // ローカルDBにインポート
+        
+        // 既存データをクリアしてから読み込み（重複防止）
+        await clearAllData(false); // 確認なしでクリア
+        
+        if (data.trips) {
           for (const trip of data.trips) {
-            await addTrip(trip);
+            // IDを保持したまま追加
+            await addTripWithId(trip);
           }
-          for (const material of data.materials) {
-            await addMaterial(material);
-          }
-          await loadTrips();
-          showToast('Googleドライブからデータを読み込んだよ！', 'success');
         }
+        if (data.materials) {
+          for (const material of data.materials) {
+            await addMaterialWithId(material);
+          }
+        }
+        if (data.blogs) {
+          for (const blog of data.blogs) {
+            await addBlogWithId(blog);
+          }
+        }
+        
+        await loadTrips();
+        await loadSavedBlogs();
+        showToast('Googleドライブからデータを読み込んだよ！ ☁️', 'success');
+        return true;
       } catch (error) {
         console.error('Load from Google Drive error:', error);
+        showToast('ドライブからの読み込みに失敗...', 'error');
+        return false;
+      }
+    }
+    
+    // IDを保持したまま追加する関数
+    async function addTripWithId(trip) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['trips'], 'readwrite');
+        const store = transaction.objectStore('trips');
+        const request = store.put(trip); // addではなくput（上書き可）
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+    
+    async function addMaterialWithId(material) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['materials'], 'readwrite');
+        const store = transaction.objectStore('materials');
+        const request = store.put(material);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+    
+    async function addBlogWithId(blog) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['blogs'], 'readwrite');
+        const store = transaction.objectStore('blogs');
+        const request = store.put(blog);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+    
+    // 確認なしでデータをクリア
+    async function clearAllData(showConfirm = true) {
+      if (showConfirm && !confirm('本当にすべてのデータを削除する？\nこの操作は取り消せないよ！')) {
+        return;
+      }
+      
+      const transaction = db.transaction(['trips', 'materials', 'blogs'], 'readwrite');
+      await Promise.all([
+        new Promise(r => { transaction.objectStore('trips').clear().onsuccess = r; }),
+        new Promise(r => { transaction.objectStore('materials').clear().onsuccess = r; }),
+        new Promise(r => { transaction.objectStore('blogs').clear().onsuccess = r; })
+      ]);
+      
+      if (showConfirm) {
+        await loadTrips();
+        await loadSavedBlogs();
+        showToast('すべてのデータを削除したよ', 'success');
       }
     }
 
@@ -2497,32 +2632,9 @@ ${texts || '(メモなし)'}
       event.target.value = '';
     }
 
-    async function clearAllData() {
-      if (!confirm('本当にすべてのデータを削除する？\nこの操作は取り消せないよ！')) {
-        return;
-      }
+    // clearAllData は上部で定義済み（引数showConfirm対応版）
 
-      if (!confirm('最終確認：本当に削除していい？')) {
-        return;
-      }
-
-      try {
-        const transaction = db.transaction(['trips', 'materials', 'blogs'], 'readwrite');
-        transaction.objectStore('trips').clear();
-        transaction.objectStore('materials').clear();
-        transaction.objectStore('blogs').clear();
-
-        await new Promise((resolve, reject) => {
-          transaction.oncomplete = resolve;
-          transaction.onerror = reject;
-        });
-
-        await loadTrips();
-        showToast('すべてのデータを削除したよ', 'success');
-      } catch (error) {
-        showToast('削除に失敗...', 'error');
-      }
-    }
+    // ========== 初期化 ==========
 
     // ========== 初期化 ==========
     
