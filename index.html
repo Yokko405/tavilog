@@ -507,6 +507,17 @@
       gap: 1rem;
     }
 
+    .preview-header .section-title {
+      flex: 1 1 100%;
+      margin-bottom: 0;
+    }
+
+    @media (min-width: 769px) {
+      .preview-header .section-title {
+        flex: 0 1 auto;
+      }
+    }
+
     .preview-actions {
       display: flex;
       gap: 0.75rem;
@@ -811,6 +822,69 @@
       opacity: 0.5;
     }
 
+    /* 編集モード用スタイル */
+    .photo-block-wrapper {
+      position: relative;
+      margin: 1rem 0;
+    }
+
+    .photo-edit-controls {
+      display: none;
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      gap: 0.25rem;
+      z-index: 10;
+    }
+
+    .edit-mode .photo-edit-controls {
+      display: flex;
+    }
+
+    .photo-edit-btn {
+      width: 36px;
+      height: 36px;
+      border: none;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      font-size: 1.2rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .photo-edit-btn:hover {
+      background: rgba(0, 0, 0, 0.9);
+      transform: scale(1.1);
+    }
+
+    .photo-edit-btn.btn-up { background: rgba(78, 205, 196, 0.9); }
+    .photo-edit-btn.btn-down { background: rgba(78, 205, 196, 0.9); }
+    .photo-edit-btn.btn-delete { background: rgba(255, 107, 107, 0.9); }
+
+    .photo-edit-btn.btn-up:hover { background: rgba(78, 205, 196, 1); }
+    .photo-edit-btn.btn-down:hover { background: rgba(78, 205, 196, 1); }
+    .photo-edit-btn.btn-delete:hover { background: rgba(255, 107, 107, 1); }
+
+    .edit-mode .blog-content h1,
+    .edit-mode .blog-content h2,
+    .edit-mode .blog-content h3,
+    .edit-mode .blog-content p {
+      outline: none;
+      transition: background 0.2s;
+    }
+
+    .edit-mode .blog-content h1:focus,
+    .edit-mode .blog-content h2:focus,
+    .edit-mode .blog-content h3:focus,
+    .edit-mode .blog-content p:focus {
+      background: rgba(255, 230, 109, 0.15);
+      border-radius: 4px;
+    }
+
     /* レスポンシブ */
     @media (max-width: 768px) {
       .container {
@@ -841,6 +915,35 @@
 
       .materials-grid {
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      }
+
+      /* プレビューアクション - スマホ対応 */
+      .preview-actions {
+        width: 100%;
+        flex-wrap: wrap;
+      }
+
+      .btn-action {
+        font-size: 0.85rem;
+        padding: 0.6rem 1rem;
+        flex: 1;
+        min-width: 100px;
+      }
+
+      /* 編集ボタン - スマホ対応 */
+      .photo-edit-btn {
+        width: 48px;
+        height: 48px;
+        font-size: 1.4rem;
+      }
+
+      .photo-edit-controls {
+        gap: 0.5rem;
+      }
+
+      /* タッチデバイス用 */
+      .photo-edit-btn:active {
+        transform: scale(0.95);
       }
     }
   </style>
@@ -992,6 +1095,7 @@
         <div class="preview-header">
           <h2 class="section-title">👀 ブログプレビュー</h2>
           <div class="preview-actions">
+            <button class="btn-action btn-edit" id="editModeBtn" onclick="toggleEditMode()" style="background: linear-gradient(135deg, #FFE66D, #FFA500); color: #2D3436;">✏️ 編集</button>
             <button class="btn-action btn-save" onclick="saveCurrentBlog()" style="background: linear-gradient(135deg, #4ECDC4, #44A08D); color: white;">💖 お気に入り保存</button>
             <button class="btn-action btn-copy" onclick="copyBlog()">📋 コピー</button>
             <button class="btn-action btn-download" onclick="downloadBlog()">💾 HTML保存</button>
@@ -1668,9 +1772,15 @@ ${texts || '(メモなし)'}
           }
           .photo-thumbnail img {
             width: 100%;
-            max-height: 300px;
-            object-fit: cover;
+            max-height: 400px;
+            object-fit: contain;
             display: block;
+            background: #f5f5f5;
+          }
+          @media (max-width: 768px) {
+            .photo-thumbnail img {
+              max-height: 250px;
+            }
           }
           .photo-zoom-hint {
             position: absolute;
@@ -2060,6 +2170,134 @@ ${texts || '(メモなし)'}
       const lightbox = document.getElementById('lightbox');
       lightbox.style.display = 'none';
       document.body.style.overflow = '';
+    }
+
+    // ========== 編集モード機能 ==========
+
+    let isEditMode = false;
+
+    function toggleEditMode() {
+      isEditMode = !isEditMode;
+      const previewFrame = document.getElementById('previewFrame');
+      const editBtn = document.getElementById('editModeBtn');
+
+      if (isEditMode) {
+        // 編集モードON
+        previewFrame.classList.add('edit-mode');
+        editBtn.textContent = '👁️ プレビュー';
+        editBtn.style.background = 'linear-gradient(135deg, #4ECDC4, #44A08D)';
+        editBtn.style.color = 'white';
+
+        // 写真ブロックに編集ボタンを追加
+        addPhotoEditControls();
+
+        // テキストを編集可能に
+        enableTextEditing();
+
+        showToast('編集モードON ✏️', 'success');
+      } else {
+        // 編集モードOFF
+        previewFrame.classList.remove('edit-mode');
+        editBtn.textContent = '✏️ 編集';
+        editBtn.style.background = 'linear-gradient(135deg, #FFE66D, #FFA500)';
+        editBtn.style.color = '#2D3436';
+
+        // テキスト編集を無効化
+        disableTextEditing();
+
+        showToast('プレビューモードに戻ったよ 👁️', 'success');
+      }
+    }
+
+    function addPhotoEditControls() {
+      const previewFrame = document.getElementById('previewFrame');
+      const photoThumbnails = previewFrame.querySelectorAll('.photo-thumbnail');
+
+      photoThumbnails.forEach((thumbnail, index) => {
+        // 既にwrapperで囲まれている場合はスキップ
+        if (thumbnail.parentElement.classList.contains('photo-block-wrapper')) {
+          return;
+        }
+
+        // 写真ブロックをwrapperで囲む
+        const wrapper = document.createElement('div');
+        wrapper.className = 'photo-block-wrapper';
+        thumbnail.parentNode.insertBefore(wrapper, thumbnail);
+        wrapper.appendChild(thumbnail);
+
+        // 編集用ボタンを追加
+        const controls = document.createElement('div');
+        controls.className = 'photo-edit-controls';
+        controls.innerHTML = `
+          <button class="photo-edit-btn btn-up" onclick="movePhotoUp(this)" title="上に移動">↑</button>
+          <button class="photo-edit-btn btn-down" onclick="movePhotoDown(this)" title="下に移動">↓</button>
+          <button class="photo-edit-btn btn-delete" onclick="deletePhoto(this)" title="削除">×</button>
+        `;
+        wrapper.appendChild(controls);
+      });
+    }
+
+    function enableTextEditing() {
+      const previewFrame = document.getElementById('previewFrame');
+      const editableElements = previewFrame.querySelectorAll('.blog-content h1, .blog-content h2, .blog-content h3, .blog-content p, .blog-content li');
+
+      editableElements.forEach(el => {
+        el.setAttribute('contenteditable', 'true');
+      });
+    }
+
+    function disableTextEditing() {
+      const previewFrame = document.getElementById('previewFrame');
+      const editableElements = previewFrame.querySelectorAll('[contenteditable="true"]');
+
+      editableElements.forEach(el => {
+        el.removeAttribute('contenteditable');
+      });
+    }
+
+    function movePhotoUp(btn) {
+      const wrapper = btn.closest('.photo-block-wrapper');
+      const prevWrapper = wrapper.previousElementSibling;
+
+      // 前の要素が写真ブロックの場合のみ移動
+      if (prevWrapper && prevWrapper.classList.contains('photo-block-wrapper')) {
+        wrapper.parentNode.insertBefore(wrapper, prevWrapper);
+        showToast('写真を上に移動したよ ↑', 'success');
+      } else {
+        // 前の要素がブログコンテンツの他の要素の場合も移動を許可
+        const blogContent = wrapper.closest('.blog-content');
+        const allChildren = Array.from(blogContent.children);
+        const currentIndex = allChildren.indexOf(wrapper);
+
+        if (currentIndex > 0) {
+          const targetElement = allChildren[currentIndex - 1];
+          wrapper.parentNode.insertBefore(wrapper, targetElement);
+          showToast('写真を上に移動したよ ↑', 'success');
+        } else {
+          showToast('これ以上上には移動できないよ', 'error');
+        }
+      }
+    }
+
+    function movePhotoDown(btn) {
+      const wrapper = btn.closest('.photo-block-wrapper');
+      const nextWrapper = wrapper.nextElementSibling;
+
+      // 次の要素が存在する場合のみ移動
+      if (nextWrapper) {
+        wrapper.parentNode.insertBefore(nextWrapper, wrapper);
+        showToast('写真を下に移動したよ ↓', 'success');
+      } else {
+        showToast('これ以上下には移動できないよ', 'error');
+      }
+    }
+
+    function deletePhoto(btn) {
+      if (confirm('この写真を削除する？')) {
+        const wrapper = btn.closest('.photo-block-wrapper');
+        wrapper.remove();
+        showToast('写真を削除したよ 🗑️', 'success');
+      }
     }
   </script>
 
