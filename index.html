@@ -2402,6 +2402,21 @@ ${texts || '(メモなし)'}
 
         // データファイルを更新または作成
         let fileId = localStorage.getItem('tavilog_gdrive_file_id');
+        
+        // ファイルIDがない場合、既存ファイルを探す
+        if (!fileId) {
+          const fileResponse = await gapi.client.drive.files.list({
+            q: `'${folderId}' in parents and name='tavilog-data.json' and trashed=false`,
+            fields: 'files(id, name, size)',
+            orderBy: 'size desc'
+          });
+          
+          if (fileResponse.result.files.length > 0) {
+            fileId = fileResponse.result.files[0].id;
+            localStorage.setItem('tavilog_gdrive_file_id', fileId);
+          }
+        }
+        
         const fileContent = JSON.stringify(data);
         const blob = new Blob([fileContent], { type: 'application/json' });
 
@@ -2414,7 +2429,7 @@ ${texts || '(メモなし)'}
             body: fileContent
           });
         } else {
-          // 新規ファイル作成
+          // 新規ファイル作成（初回のみ）
           const metadata = {
             name: 'tavilog-data.json',
             parents: [folderId]
@@ -2467,15 +2482,18 @@ ${texts || '(メモなし)'}
             }
           }
           
-          // フォルダ内のファイルを探す
+          // フォルダ内のファイルを探す（サイズ順で大きいものを優先）
           const fileResponse = await gapi.client.drive.files.list({
             q: `'${folderId}' in parents and name='tavilog-data.json' and trashed=false`,
-            fields: 'files(id, name)'
+            fields: 'files(id, name, size, modifiedTime)',
+            orderBy: 'size desc'
           });
           
           if (fileResponse.result.files.length > 0) {
+            // 最大サイズのファイルを使用
             fileId = fileResponse.result.files[0].id;
             localStorage.setItem('tavilog_gdrive_file_id', fileId);
+            console.log('Found file:', fileResponse.result.files[0]);
           } else {
             console.log('tavilog-data.json not found');
             return false;
