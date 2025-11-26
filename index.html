@@ -1462,7 +1462,8 @@
       };
 
       const texts = materials.filter(m => m.type === 'text').map(m => m.content).join('\n\n');
-      const photoCount = materials.filter(m => m.type === 'photo').length;
+      const photos = materials.filter(m => m.type === 'photo');
+      const photoCount = photos.length;
 
       // APIキーとプロバイダーチェック
       const apiKey = getApiKey();
@@ -1472,21 +1473,31 @@
         throw new Error('APIキーを設定してね！ページ上部の入力欄にAPIキーを入力してください。');
       }
 
+      // 写真の説明リストを作成（Vision APIを使う場合に参照用）
+      const photoDescriptions = photos.map((_, i) => `[PHOTO_${i + 1}]`).join(', ');
+
       const prompt = `
 あなたは旅行ブログライターです。以下の情報をもとに、魅力的な旅行ブログ記事をHTMLで作成してください。
 
 【旅行名】${trip.name}
 【日付】${trip.date}
-【写真の数】${photoCount}枚
+【写真の数】${photoCount}枚（${photoDescriptions}）
 【旅行メモ・感想】
 ${texts || '(メモなし)'}
 
 【文章スタイル】${stylePrompts[style]}
 
+【重要：写真の配置について】
+添付された写真の内容を確認し、ブログの文章内容に合った場所に各写真を配置してください。
+- 食べ物の写真 → 食事について書いている段落の近くに
+- 景色の写真 → その場所について説明している段落の近くに
+- 建物・施設の写真 → その施設について触れている部分に
+- 人物の写真 → 体験談や思い出を語っている部分に
+
 【出力形式】
 - 完全なHTMLは不要。記事本文のHTMLのみを出力してください
 - 見出し（h2, h3）、段落（p）、リスト（ul, li）を適切に使用
-- 写真の配置場所は [PHOTO_1], [PHOTO_2] のように記載
+- 写真の配置場所は [PHOTO_1], [PHOTO_2] のように記載（写真の内容に合った場所に！）
 - 読みやすく、スクロールして楽しめる構成に
 - 絵文字を適度に使用してポップに
 - 最後にまとめや次回への期待を入れる
@@ -1497,7 +1508,26 @@ ${texts || '(メモなし)'}
 
       try {
         if (provider === 'openai') {
-          // OpenAI API
+          // OpenAI API with Vision（写真の内容を認識）
+          const messageContent = [
+            { type: 'text', text: prompt }
+          ];
+
+          // 写真をVision APIに送信（内容を認識させる）
+          photos.forEach((photo, index) => {
+            messageContent.push({
+              type: 'image_url',
+              image_url: {
+                url: photo.content,
+                detail: 'low' // コスト削減のため低解像度で認識
+              }
+            });
+            messageContent.push({
+              type: 'text',
+              text: `↑ これが [PHOTO_${index + 1}] です`
+            });
+          });
+
           response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -1508,7 +1538,7 @@ ${texts || '(メモなし)'}
               model: 'gpt-4o',
               max_tokens: 4000,
               messages: [
-                { role: 'user', content: prompt }
+                { role: 'user', content: messageContent }
               ]
             })
           });
@@ -1533,7 +1563,32 @@ ${texts || '(メモなし)'}
           blogHtml = data.choices[0].message.content;
 
         } else {
-          // Anthropic API
+          // Anthropic API with Vision（写真の内容を認識）
+          const messageContent = [];
+
+          // 写真をVision APIに送信
+          photos.forEach((photo, index) => {
+            // base64データからmedia_typeとdataを抽出
+            const matches = photo.content.match(/^data:(.+);base64,(.+)$/);
+            if (matches) {
+              messageContent.push({
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: matches[1],
+                  data: matches[2]
+                }
+              });
+              messageContent.push({
+                type: 'text',
+                text: `↑ これが [PHOTO_${index + 1}] です`
+              });
+            }
+          });
+
+          // プロンプトを追加
+          messageContent.push({ type: 'text', text: prompt });
+
           response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: {
@@ -1546,7 +1601,7 @@ ${texts || '(メモなし)'}
               model: 'claude-sonnet-4-20250514',
               max_tokens: 4000,
               messages: [
-                { role: 'user', content: prompt }
+                { role: 'user', content: messageContent }
               ]
             })
           });
@@ -1578,7 +1633,6 @@ ${texts || '(メモなし)'}
       }
 
       // 写真を挿入（サムネイル + クリックで拡大）
-      const photos = materials.filter(m => m.type === 'photo');
       photos.forEach((photo, index) => {
         const placeholder = `[PHOTO_${index + 1}]`;
         const imgTag = `
