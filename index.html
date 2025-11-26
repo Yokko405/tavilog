@@ -507,6 +507,17 @@
       gap: 1rem;
     }
 
+    .preview-header .section-title {
+      flex: 1 1 100%;
+      margin-bottom: 0;
+    }
+
+    @media (min-width: 769px) {
+      .preview-header .section-title {
+        flex: 0 1 auto;
+      }
+    }
+
     .preview-actions {
       display: flex;
       gap: 0.75rem;
@@ -904,6 +915,35 @@
 
       .materials-grid {
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      }
+
+      /* プレビューアクション - スマホ対応 */
+      .preview-actions {
+        width: 100%;
+        flex-wrap: wrap;
+      }
+
+      .btn-action {
+        font-size: 0.85rem;
+        padding: 0.6rem 1rem;
+        flex: 1;
+        min-width: 100px;
+      }
+
+      /* 編集ボタン - スマホ対応 */
+      .photo-edit-btn {
+        width: 48px;
+        height: 48px;
+        font-size: 1.4rem;
+      }
+
+      .photo-edit-controls {
+        gap: 0.5rem;
+      }
+
+      /* タッチデバイス用 */
+      .photo-edit-btn:active {
+        transform: scale(0.95);
       }
     }
   </style>
@@ -1732,9 +1772,15 @@ ${texts || '(メモなし)'}
           }
           .photo-thumbnail img {
             width: 100%;
-            max-height: 300px;
-            object-fit: cover;
+            max-height: 400px;
+            object-fit: contain;
             display: block;
+            background: #f5f5f5;
+          }
+          @media (max-width: 768px) {
+            .photo-thumbnail img {
+              max-height: 250px;
+            }
           }
           .photo-zoom-hint {
             position: absolute;
