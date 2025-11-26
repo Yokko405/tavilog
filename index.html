@@ -2125,35 +2125,50 @@ ${texts || '(メモなし)'}
 
     async function initGoogleAuth(clientId) {
       return new Promise((resolve, reject) => {
-        // 待機
+        // GAPIとGISの両方が準備できるまで待機
         const checkReady = setInterval(() => {
-          if (gapiInited && window.google) {
+          if (gapiInited && gisInited && window.google && window.google.accounts) {
             clearInterval(checkReady);
             
-            tokenClient = google.accounts.oauth2.initTokenClient({
-              client_id: clientId,
-              scope: 'https://www.googleapis.com/auth/drive.file',
-              callback: (response) => {
-                if (response.error) {
-                  reject(response);
-                  return;
+            try {
+              tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: clientId,
+                scope: 'https://www.googleapis.com/auth/drive.file',
+                callback: (response) => {
+                  console.log('OAuth callback received:', response);
+                  if (response.error) {
+                    console.error('OAuth error:', response);
+                    reject(new Error(response.error_description || response.error));
+                    return;
+                  }
+                  if (response.access_token) {
+                    console.log('Access token received successfully');
+                    localStorage.setItem('tavilog_gdrive_connected', 'true');
+                    updateGdriveStatus();
+                    syncToGoogleDrive();
+                    resolve();
+                  }
+                },
+                error_callback: (error) => {
+                  console.error('OAuth error_callback:', error);
+                  reject(new Error(error.message || 'OAuth認証エラー'));
                 }
-                localStorage.setItem('tavilog_gdrive_connected', 'true');
-                updateGdriveStatus();
-                syncToGoogleDrive();
-                resolve();
-              },
-            });
+              });
 
-            tokenClient.requestAccessToken({ prompt: 'consent' });
+              console.log('Requesting access token...');
+              tokenClient.requestAccessToken({ prompt: 'consent' });
+            } catch (err) {
+              console.error('initTokenClient error:', err);
+              reject(err);
+            }
           }
         }, 100);
 
-        // タイムアウト
+        // タイムアウト（60秒に延長）
         setTimeout(() => {
           clearInterval(checkReady);
-          reject(new Error('Timeout'));
-        }, 30000);
+          reject(new Error('タイムアウト：Google APIの読み込みに時間がかかりすぎています'));
+        }, 60000);
       });
     }
 
