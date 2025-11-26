@@ -1,0 +1,2399 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaviLog - 旅の記録をブログに</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #FF6B6B;
+      --secondary: #4ECDC4;
+      --accent: #FFE66D;
+      --purple: #A66CFF;
+      --bg: #FFF9F0;
+      --card: #FFFFFF;
+      --text: #2D3436;
+      --text-light: #636E72;
+      --shadow: 0 8px 32px rgba(255, 107, 107, 0.15);
+      --shadow-hover: 0 12px 48px rgba(255, 107, 107, 0.25);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Zen Maru Gothic', 'Quicksand', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* 背景デコレーション */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -50%;
+      right: -30%;
+      width: 80%;
+      height: 80%;
+      background: radial-gradient(circle, rgba(78, 205, 196, 0.1) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      bottom: -30%;
+      left: -20%;
+      width: 60%;
+      height: 60%;
+      background: radial-gradient(circle, rgba(255, 107, 107, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    /* ヘッダー */
+    header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--purple) 100%);
+      padding: 2rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    header::before {
+      content: '✈️ 🗺️ 📸 🌴 ⛩️ 🏔️';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 8rem;
+      opacity: 0.1;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .logo {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 3rem;
+      font-weight: 700;
+      color: white;
+      text-shadow: 2px 2px 0 rgba(0,0,0,0.1);
+      position: relative;
+      display: inline-block;
+    }
+
+    .logo span {
+      color: var(--accent);
+    }
+
+    .tagline {
+      color: rgba(255,255,255,0.9);
+      margin-top: 0.5rem;
+      font-size: 1.1rem;
+    }
+
+    /* メインコンテナ */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* タブナビゲーション */
+    .tabs {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      flex: 1;
+      min-width: 150px;
+      padding: 1rem 1.5rem;
+      border: none;
+      border-radius: 20px;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      background: var(--card);
+      color: var(--text-light);
+      box-shadow: var(--shadow);
+    }
+
+    .tab-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-hover);
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--purple) 100%);
+      color: white;
+    }
+
+    .tab-btn .icon {
+      margin-right: 0.5rem;
+    }
+
+    /* タブコンテンツ */
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.4s ease;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 素材追加セクション */
+    .add-section {
+      background: var(--card);
+      border-radius: 24px;
+      padding: 2rem;
+      box-shadow: var(--shadow);
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* 旅行選択・作成 */
+    .trip-selector {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .trip-select {
+      flex: 1;
+      min-width: 200px;
+      padding: 1rem;
+      border: 2px solid #E0E0E0;
+      border-radius: 16px;
+      font-family: inherit;
+      font-size: 1rem;
+      background: white;
+      cursor: pointer;
+      transition: border-color 0.3s;
+    }
+
+    .trip-select:focus {
+      outline: none;
+      border-color: var(--secondary);
+    }
+
+    .btn-new-trip {
+      padding: 1rem 2rem;
+      border: 2px dashed var(--secondary);
+      border-radius: 16px;
+      background: rgba(78, 205, 196, 0.1);
+      color: var(--secondary);
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-new-trip:hover {
+      background: var(--secondary);
+      color: white;
+      border-style: solid;
+    }
+
+    /* ドロップゾーン */
+    .dropzone {
+      border: 3px dashed #DDD;
+      border-radius: 20px;
+      padding: 3rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: linear-gradient(135deg, rgba(255,107,107,0.03) 0%, rgba(78,205,196,0.03) 100%);
+      margin-bottom: 1.5rem;
+    }
+
+    .dropzone:hover,
+    .dropzone.dragover {
+      border-color: var(--primary);
+      background: linear-gradient(135deg, rgba(255,107,107,0.08) 0%, rgba(78,205,196,0.08) 100%);
+      transform: scale(1.01);
+    }
+
+    .dropzone-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+    }
+
+    .dropzone-text {
+      font-size: 1.2rem;
+      color: var(--text-light);
+    }
+
+    .dropzone-hint {
+      font-size: 0.9rem;
+      color: #AAA;
+      margin-top: 0.5rem;
+    }
+
+    /* テキスト入力 */
+    .text-input-area {
+      margin-top: 1.5rem;
+    }
+
+    .text-input {
+      width: 100%;
+      min-height: 120px;
+      padding: 1.5rem;
+      border: 2px solid #E0E0E0;
+      border-radius: 16px;
+      font-family: inherit;
+      font-size: 1rem;
+      resize: vertical;
+      transition: border-color 0.3s;
+    }
+
+    .text-input:focus {
+      outline: none;
+      border-color: var(--secondary);
+    }
+
+    .text-input::placeholder {
+      color: #BBB;
+    }
+
+    .btn-add-text {
+      margin-top: 1rem;
+      padding: 1rem 2rem;
+      background: linear-gradient(135deg, var(--secondary) 0%, #45B7AA 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-add-text:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(78, 205, 196, 0.4);
+    }
+
+    /* 素材一覧 */
+    .materials-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+
+    .material-card {
+      background: var(--card);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      transition: all 0.3s;
+      position: relative;
+    }
+
+    .material-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-hover);
+    }
+
+    .material-card img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+    }
+
+    .material-card .text-preview {
+      padding: 1rem;
+      font-size: 0.9rem;
+      color: var(--text-light);
+      height: 150px;
+      overflow: hidden;
+      background: linear-gradient(135deg, rgba(255,230,109,0.2) 0%, rgba(166,108,255,0.1) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .material-card .card-footer {
+      padding: 0.75rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid #F0F0F0;
+    }
+
+    .material-type {
+      font-size: 0.8rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+
+    .type-photo {
+      background: rgba(255, 107, 107, 0.15);
+      color: var(--primary);
+    }
+
+    .type-text {
+      background: rgba(78, 205, 196, 0.15);
+      color: var(--secondary);
+    }
+
+    .btn-delete {
+      background: none;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      opacity: 0.5;
+      transition: opacity 0.3s;
+    }
+
+    .btn-delete:hover {
+      opacity: 1;
+    }
+
+    /* ブログ生成セクション */
+    .generate-section {
+      background: var(--card);
+      border-radius: 24px;
+      padding: 2rem;
+      box-shadow: var(--shadow);
+    }
+
+    .trip-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, rgba(255,107,107,0.1) 0%, rgba(166,108,255,0.1) 100%);
+      padding: 1.5rem;
+      border-radius: 16px;
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--purple) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .stat-label {
+      font-size: 0.9rem;
+      color: var(--text-light);
+      margin-top: 0.25rem;
+    }
+
+    .generate-options {
+      margin-bottom: 2rem;
+    }
+
+    .option-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .option-label {
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+      display: block;
+    }
+
+    .style-options {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .style-option {
+      padding: 0.75rem 1.5rem;
+      border: 2px solid #E0E0E0;
+      border-radius: 12px;
+      background: white;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .style-option:hover {
+      border-color: var(--primary);
+    }
+
+    .style-option.selected {
+      border-color: var(--primary);
+      background: rgba(255, 107, 107, 0.1);
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .btn-generate {
+      width: 100%;
+      padding: 1.5rem;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--purple) 100%);
+      color: white;
+      border: none;
+      border-radius: 16px;
+      font-family: inherit;
+      font-size: 1.2rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+    }
+
+    .btn-generate:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(255, 107, 107, 0.4);
+    }
+
+    .btn-generate:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ブログプレビュー */
+    .preview-section {
+      background: var(--card);
+      border-radius: 24px;
+      padding: 2rem;
+      box-shadow: var(--shadow);
+    }
+
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .preview-actions {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .btn-action {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 12px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-copy {
+      background: var(--secondary);
+      color: white;
+    }
+
+    .btn-download {
+      background: var(--purple);
+      color: white;
+    }
+
+    .btn-action:hover {
+      transform: translateY(-2px);
+    }
+
+    .preview-frame {
+      border: 1px solid #E0E0E0;
+      border-radius: 16px;
+      min-height: 400px;
+      padding: 2rem;
+      background: white;
+    }
+
+    .preview-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 300px;
+      color: var(--text-light);
+    }
+
+    .preview-placeholder-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    /* ローディング */
+    .loading {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .loading.active {
+      display: flex;
+    }
+
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* APIキー設定バー */
+    .api-key-bar {
+      background: linear-gradient(135deg, #2D3436 0%, #636E72 100%);
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .api-key-bar label {
+      color: white;
+      font-size: 0.85rem;
+      white-space: nowrap;
+    }
+
+    .ai-select {
+      padding: 0.5rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      background: white;
+      cursor: pointer;
+    }
+
+    .api-key-input {
+      flex: 1;
+      min-width: 120px;
+      padding: 0.5rem 0.75rem;
+      border: none;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 0.8rem;
+    }
+
+    .api-key-status {
+      padding: 0.4rem 0.6rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .api-key-status.valid {
+      background: rgba(78, 205, 196, 0.2);
+      color: #4ECDC4;
+    }
+
+    .api-key-status.invalid {
+      background: rgba(255, 107, 107, 0.2);
+      color: #FF6B6B;
+    }
+
+    /* モーダル */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--card);
+      border-radius: 24px;
+      padding: 2rem;
+      max-width: 500px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      animation: modalIn 0.3s ease;
+    }
+
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .modal-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-input {
+      width: 100%;
+      padding: 1rem;
+      border: 2px solid #E0E0E0;
+      border-radius: 12px;
+      font-family: inherit;
+      font-size: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .modal-input:focus {
+      outline: none;
+      border-color: var(--secondary);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+    }
+
+    .btn-modal {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 12px;
+      font-family: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-cancel {
+      background: #E0E0E0;
+      color: var(--text);
+    }
+
+    .btn-confirm {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--purple) 100%);
+      color: white;
+    }
+
+    /* トースト通知 */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      padding: 1rem 2rem;
+      background: var(--text);
+      color: white;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s;
+      z-index: 1001;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .toast.success {
+      background: var(--secondary);
+    }
+
+    .toast.error {
+      background: var(--primary);
+    }
+
+    /* 設定タブのスタイル */
+    .settings-group {
+      margin-bottom: 2rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid #E0E0E0;
+    }
+
+    .settings-group:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .settings-subtitle {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: var(--text);
+    }
+
+    .storage-options {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .storage-option {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      padding: 1rem;
+      border: 2px solid #E0E0E0;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .storage-option:hover {
+      border-color: var(--secondary);
+    }
+
+    .storage-option input[type="radio"] {
+      margin-top: 0.25rem;
+      accent-color: var(--secondary);
+      width: 18px;
+      height: 18px;
+    }
+
+    .storage-option input[type="radio"]:checked + .storage-option-content {
+      color: var(--text);
+    }
+
+    .storage-option:has(input:checked) {
+      border-color: var(--secondary);
+      background: rgba(78, 205, 196, 0.05);
+    }
+
+    .storage-option-title {
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .storage-option-desc {
+      font-size: 0.85rem;
+      color: var(--text-light);
+    }
+
+    .gdrive-settings {
+      background: linear-gradient(135deg, rgba(66, 133, 244, 0.05) 0%, rgba(52, 168, 83, 0.05) 100%);
+      padding: 1.5rem;
+      border-radius: 16px;
+      margin-top: 1rem;
+    }
+
+    .gdrive-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1rem;
+      background: white;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+    }
+
+    .gdrive-status.connected .status-icon { color: #34A853; }
+    .gdrive-status.disconnected .status-icon { color: #EA4335; }
+
+    .gdrive-input-group {
+      margin-bottom: 1rem;
+    }
+
+    .gdrive-input-group label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .gdrive-actions {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-gdrive-connect {
+      padding: 0.75rem 1.5rem;
+      background: linear-gradient(135deg, #4285F4 0%, #34A853 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-gdrive-connect:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+    }
+
+    .btn-gdrive-disconnect {
+      padding: 0.75rem 1.5rem;
+      background: #E0E0E0;
+      color: var(--text);
+      border: none;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .setup-guide {
+      margin-top: 1.5rem;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .setup-guide summary {
+      padding: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: #F8F8F8;
+    }
+
+    .setup-guide summary:hover {
+      background: #F0F0F0;
+    }
+
+    .guide-content {
+      padding: 1rem;
+    }
+
+    .guide-step {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .guide-step:last-child {
+      margin-bottom: 0;
+    }
+
+    .step-number {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--purple) 100%);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+
+    .step-content {
+      flex: 1;
+    }
+
+    .step-content strong {
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+
+    .step-content p {
+      font-size: 0.9rem;
+      color: var(--text-light);
+      margin: 0;
+    }
+
+    .step-content code {
+      background: #F0F0F0;
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.85rem;
+    }
+
+    .step-content a {
+      color: var(--secondary);
+      word-break: break-all;
+    }
+
+    .data-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .btn-data-action {
+      padding: 0.75rem 1rem;
+      background: white;
+      border: 2px solid #E0E0E0;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-data-action:hover {
+      border-color: var(--secondary);
+      background: rgba(78, 205, 196, 0.05);
+    }
+
+    .btn-data-action.btn-danger {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .btn-data-action.btn-danger:hover {
+      background: rgba(255, 107, 107, 0.1);
+    }
+
+    /* 空状態 */
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-light);
+    }
+
+    .empty-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    /* レスポンシブ */
+    @media (max-width: 768px) {
+      .container {
+        padding: 1rem;
+      }
+
+      .logo {
+        font-size: 2rem;
+      }
+
+      .tabs {
+        gap: 0.5rem;
+      }
+
+      .tab-btn {
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+        min-width: auto;
+      }
+
+      .dropzone {
+        padding: 2rem;
+      }
+
+      .dropzone-icon {
+        font-size: 3rem;
+      }
+
+      .materials-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 class="logo">Tavi<span>Log</span></h1>
+    <p class="tagline">旅の思い出を、素敵なブログに ✨</p>
+  </header>
+
+  <!-- APIキー設定バー -->
+  <div class="api-key-bar">
+    <label>🤖 AI:</label>
+    <select id="aiProvider" class="ai-select">
+      <option value="openai">ChatGPT (OpenAI)</option>
+      <option value="anthropic">Claude (Anthropic)</option>
+    </select>
+    <label>🔑</label>
+    <input type="password" class="api-key-input" id="apiKeyInput" placeholder="APIキーを入力...">
+    <span class="api-key-status invalid" id="apiKeyStatus">未設定</span>
+  </div>
+
+  <div class="container">
+    <!-- タブナビゲーション -->
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="add">
+        <span class="icon">📝</span>素材を追加
+      </button>
+      <button class="tab-btn" data-tab="materials">
+        <span class="icon">📦</span>素材一覧
+      </button>
+      <button class="tab-btn" data-tab="generate">
+        <span class="icon">✨</span>ブログ生成
+      </button>
+      <button class="tab-btn" data-tab="preview">
+        <span class="icon">👀</span>プレビュー
+      </button>
+      <button class="tab-btn" data-tab="settings">
+        <span class="icon">⚙️</span>設定
+      </button>
+    </nav>
+
+    <!-- 素材追加タブ -->
+    <div id="tab-add" class="tab-content active">
+      <div class="add-section">
+        <h2 class="section-title">🧳 旅を選んで素材を追加</h2>
+        
+        <div class="trip-selector">
+          <select id="tripSelect" class="trip-select">
+            <option value="">旅行を選択...</option>
+          </select>
+          <button class="btn-new-trip" onclick="openNewTripModal()">
+            ➕ 新しい旅を作成
+          </button>
+        </div>
+
+        <div class="dropzone" id="dropzone">
+          <div class="dropzone-icon">📸</div>
+          <p class="dropzone-text">写真をドラッグ＆ドロップ</p>
+          <p class="dropzone-hint">またはクリックしてファイルを選択</p>
+          <input type="file" id="fileInput" accept="image/*" multiple style="display:none">
+        </div>
+
+        <div class="text-input-area">
+          <textarea 
+            class="text-input" 
+            id="textInput" 
+            placeholder="旅の思い出やメモを自由に書いてね 🖊️&#10;&#10;例：&#10;・今日は箱根の温泉に行った！露天風呂から見た富士山が最高だった。&#10;・ランチは黒たまご食べた。意外とおいしい笑"></textarea>
+          <button class="btn-add-text" onclick="addTextMaterial()">
+            💬 テキストを追加
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 素材一覧タブ -->
+    <div id="tab-materials" class="tab-content">
+      <div class="add-section">
+        <h2 class="section-title">📦 保存された素材</h2>
+        
+        <div class="trip-selector">
+          <select id="materialsFilterTrip" class="trip-select" onchange="renderMaterials()">
+            <option value="">すべての旅行</option>
+          </select>
+        </div>
+
+        <div id="materialsGrid" class="materials-grid">
+          <!-- 素材カードがここに入る -->
+        </div>
+
+        <div id="materialsEmpty" class="empty-state" style="display:none;">
+          <div class="empty-icon">🏖️</div>
+          <p>まだ素材がないよ！<br>写真やテキストを追加してみよう</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ブログ生成タブ -->
+    <div id="tab-generate" class="tab-content">
+      <div class="generate-section">
+        <h2 class="section-title">✨ ブログを生成</h2>
+
+        <div class="trip-selector">
+          <select id="generateTripSelect" class="trip-select">
+            <option value="">生成する旅行を選択...</option>
+          </select>
+        </div>
+
+        <div class="trip-stats" id="tripStats">
+          <div class="stat-card">
+            <div class="stat-number" id="photoCount">0</div>
+            <div class="stat-label">写真</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="textCount">0</div>
+            <div class="stat-label">テキスト</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="totalCount">0</div>
+            <div class="stat-label">合計素材</div>
+          </div>
+        </div>
+
+        <div class="generate-options">
+          <div class="option-group">
+            <label class="option-label">📝 文章のスタイル</label>
+            <div class="style-options">
+              <button class="style-option selected" data-style="casual">カジュアル</button>
+              <button class="style-option" data-style="diary">日記風</button>
+              <button class="style-option" data-style="magazine">旅行雑誌風</button>
+              <button class="style-option" data-style="poetic">エモい感じ</button>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-generate" id="generateBtn" onclick="generateBlog()">
+          <span class="btn-text">🚀 ブログを生成する</span>
+          <div class="loading">
+            <div class="spinner"></div>
+            <span>生成中...</span>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <!-- プレビュータブ -->
+    <div id="tab-preview" class="tab-content">
+      <div class="preview-section">
+        <div class="preview-header">
+          <h2 class="section-title">👀 ブログプレビュー</h2>
+          <div class="preview-actions">
+            <button class="btn-action btn-copy" onclick="copyBlog()">📋 コピー</button>
+            <button class="btn-action btn-download" onclick="downloadBlog()">💾 HTML保存</button>
+          </div>
+        </div>
+
+        <div class="preview-frame" id="previewFrame">
+          <div class="preview-placeholder">
+            <div class="preview-placeholder-icon">📝</div>
+            <p>ブログを生成すると、ここにプレビューが表示されます</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 設定タブ -->
+    <div id="tab-settings" class="tab-content">
+      <div class="add-section">
+        <h2 class="section-title">⚙️ 設定</h2>
+        
+        <!-- ストレージ設定 -->
+        <div class="settings-group">
+          <h3 class="settings-subtitle">💾 データ保存先</h3>
+          <div class="storage-options">
+            <label class="storage-option">
+              <input type="radio" name="storageType" value="local" checked onchange="changeStorageType('local')">
+              <div class="storage-option-content">
+                <div class="storage-option-title">📱 このブラウザに保存</div>
+                <div class="storage-option-desc">設定不要、すぐ使える。ただし他のデバイスとは同期されません。</div>
+              </div>
+            </label>
+            <label class="storage-option">
+              <input type="radio" name="storageType" value="gdrive" onchange="changeStorageType('gdrive')">
+              <div class="storage-option-content">
+                <div class="storage-option-title">☁️ Googleドライブに保存</div>
+                <div class="storage-option-desc">複数デバイスで同期可能。初回設定が必要です。</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Googleドライブ設定（gdrive選択時のみ表示） -->
+        <div class="settings-group gdrive-settings" id="gdriveSettings" style="display:none;">
+          <h3 class="settings-subtitle">☁️ Googleドライブ設定</h3>
+          
+          <div class="gdrive-status" id="gdriveStatus">
+            <span class="status-icon">❌</span>
+            <span class="status-text">未接続</span>
+          </div>
+
+          <div class="gdrive-input-group">
+            <label>Client ID</label>
+            <input type="text" class="modal-input" id="gdriveClientId" placeholder="xxxxx.apps.googleusercontent.com">
+          </div>
+
+          <div class="gdrive-actions">
+            <button class="btn-gdrive-connect" id="gdriveConnectBtn" onclick="connectGoogleDrive()">
+              🔗 Googleドライブに接続
+            </button>
+            <button class="btn-gdrive-disconnect" id="gdriveDisconnectBtn" onclick="disconnectGoogleDrive()" style="display:none;">
+              🔌 接続解除
+            </button>
+          </div>
+
+          <!-- 設定ガイド -->
+          <details class="setup-guide">
+            <summary>📖 Googleドライブの設定方法（タップして開く）</summary>
+            <div class="guide-content">
+              <div class="guide-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                  <strong>Google Cloud Consoleにアクセス</strong>
+                  <p><a href="https://console.cloud.google.com/" target="_blank">https://console.cloud.google.com/</a> を開いてGoogleアカウントでログイン</p>
+                </div>
+              </div>
+              
+              <div class="guide-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                  <strong>新しいプロジェクトを作成</strong>
+                  <p>上部の「プロジェクトを選択」→「新しいプロジェクト」→ 名前を「TaviLog」などにして作成</p>
+                </div>
+              </div>
+              
+              <div class="guide-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                  <strong>Google Drive APIを有効化</strong>
+                  <p>左メニュー「APIとサービス」→「ライブラリ」→「Google Drive API」を検索して「有効にする」</p>
+                </div>
+              </div>
+              
+              <div class="guide-step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                  <strong>OAuth同意画面を設定</strong>
+                  <p>「APIとサービス」→「OAuth同意画面」→「外部」を選択 → アプリ名とメールを入力して保存</p>
+                </div>
+              </div>
+              
+              <div class="guide-step">
+                <div class="step-number">5</div>
+                <div class="step-content">
+                  <strong>認証情報を作成</strong>
+                  <p>「認証情報」→「認証情報を作成」→「OAuthクライアントID」→ アプリの種類「ウェブアプリケーション」</p>
+                </div>
+              </div>
+              
+              <div class="guide-step">
+                <div class="step-number">6</div>
+                <div class="step-content">
+                  <strong>リダイレクトURIを設定</strong>
+                  <p>「承認済みのJavaScript生成元」に今開いているURL（例：<code id="currentOrigin"></code>）を追加</p>
+                </div>
+              </div>
+              
+              <div class="guide-step">
+                <div class="step-number">7</div>
+                <div class="step-content">
+                  <strong>Client IDをコピー</strong>
+                  <p>作成されたClient ID（xxxxx.apps.googleusercontent.comの形式）を上の入力欄に貼り付け</p>
+                </div>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <!-- データ管理 -->
+        <div class="settings-group">
+          <h3 class="settings-subtitle">🗄️ データ管理</h3>
+          <div class="data-actions">
+            <button class="btn-data-action" onclick="exportData()">
+              📤 データをエクスポート
+            </button>
+            <button class="btn-data-action" onclick="document.getElementById('importFile').click()">
+              📥 データをインポート
+            </button>
+            <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+            <button class="btn-data-action btn-danger" onclick="clearAllData()">
+              🗑️ すべてのデータを削除
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 新規旅行モーダル -->
+  <div class="modal-overlay" id="newTripModal">
+    <div class="modal">
+      <h3 class="modal-title">🧳 新しい旅を作成</h3>
+      <input type="text" class="modal-input" id="tripNameInput" placeholder="旅行の名前（例：箱根温泉旅行2024）">
+      <input type="date" class="modal-input" id="tripDateInput">
+      <div class="modal-actions">
+        <button class="btn-modal btn-cancel" onclick="closeNewTripModal()">キャンセル</button>
+        <button class="btn-modal btn-confirm" onclick="createNewTrip()">作成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- トースト通知 -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // IndexedDBのセットアップ
+    const DB_NAME = 'TaviLogDB';
+    const DB_VERSION = 1;
+    let db;
+
+    // DB初期化
+    function initDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          db = request.result;
+          resolve(db);
+        };
+        
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          
+          // 旅行ストア
+          if (!db.objectStoreNames.contains('trips')) {
+            const tripStore = db.createObjectStore('trips', { keyPath: 'id', autoIncrement: true });
+            tripStore.createIndex('name', 'name', { unique: false });
+            tripStore.createIndex('date', 'date', { unique: false });
+          }
+          
+          // 素材ストア
+          if (!db.objectStoreNames.contains('materials')) {
+            const materialStore = db.createObjectStore('materials', { keyPath: 'id', autoIncrement: true });
+            materialStore.createIndex('tripId', 'tripId', { unique: false });
+            materialStore.createIndex('type', 'type', { unique: false });
+            materialStore.createIndex('createdAt', 'createdAt', { unique: false });
+          }
+          
+          // 生成されたブログストア
+          if (!db.objectStoreNames.contains('blogs')) {
+            const blogStore = db.createObjectStore('blogs', { keyPath: 'id', autoIncrement: true });
+            blogStore.createIndex('tripId', 'tripId', { unique: false });
+          }
+        };
+      });
+    }
+
+    // 旅行を取得
+    async function getTrips() {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['trips'], 'readonly');
+        const store = transaction.objectStore('trips');
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    // 旅行を追加
+    async function addTrip(trip) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['trips'], 'readwrite');
+        const store = transaction.objectStore('trips');
+        const request = store.add(trip);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    // 素材を取得
+    async function getMaterials(tripId = null) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['materials'], 'readonly');
+        const store = transaction.objectStore('materials');
+        
+        if (tripId) {
+          const index = store.index('tripId');
+          const request = index.getAll(tripId);
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        } else {
+          const request = store.getAll();
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        }
+      });
+    }
+
+    // 素材を追加
+    async function addMaterial(material) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['materials'], 'readwrite');
+        const store = transaction.objectStore('materials');
+        const request = store.add(material);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    // 素材を削除
+    async function deleteMaterial(id) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['materials'], 'readwrite');
+        const store = transaction.objectStore('materials');
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    // タブ切り替え
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+        
+        // タブ切り替え時にデータ更新
+        if (btn.dataset.tab === 'materials') {
+          renderMaterials();
+        } else if (btn.dataset.tab === 'generate') {
+          updateTripStats();
+        }
+      });
+    });
+
+    // ドロップゾーン
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+
+    dropzone.addEventListener('click', () => fileInput.click());
+    
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    });
+
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.classList.remove('dragover');
+    });
+
+    dropzone.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      const files = e.dataTransfer.files;
+      await handleFiles(files);
+    });
+
+    fileInput.addEventListener('change', async (e) => {
+      await handleFiles(e.target.files);
+      fileInput.value = '';
+    });
+
+    // ファイル処理
+    async function handleFiles(files) {
+      const tripId = parseInt(document.getElementById('tripSelect').value);
+      if (!tripId) {
+        showToast('先に旅行を選択してね！', 'error');
+        return;
+      }
+
+      for (const file of files) {
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            const material = {
+              tripId: tripId,
+              type: 'photo',
+              content: e.target.result,
+              fileName: file.name,
+              createdAt: new Date().toISOString()
+            };
+            await addMaterial(material);
+            showToast('写真を追加したよ！ 📸', 'success');
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+    }
+
+    // テキスト追加
+    async function addTextMaterial() {
+      const tripId = parseInt(document.getElementById('tripSelect').value);
+      const text = document.getElementById('textInput').value.trim();
+
+      if (!tripId) {
+        showToast('先に旅行を選択してね！', 'error');
+        return;
+      }
+
+      if (!text) {
+        showToast('テキストを入力してね！', 'error');
+        return;
+      }
+
+      const material = {
+        tripId: tripId,
+        type: 'text',
+        content: text,
+        createdAt: new Date().toISOString()
+      };
+
+      await addMaterial(material);
+      document.getElementById('textInput').value = '';
+      showToast('テキストを追加したよ！ 💬', 'success');
+    }
+
+    // 素材一覧をレンダリング
+    async function renderMaterials() {
+      const filterTripId = document.getElementById('materialsFilterTrip').value;
+      const materials = await getMaterials(filterTripId ? parseInt(filterTripId) : null);
+      const trips = await getTrips();
+      const tripMap = {};
+      trips.forEach(t => tripMap[t.id] = t.name);
+
+      const grid = document.getElementById('materialsGrid');
+      const empty = document.getElementById('materialsEmpty');
+
+      if (materials.length === 0) {
+        grid.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+      }
+
+      empty.style.display = 'none';
+      grid.innerHTML = materials.map(m => {
+        if (m.type === 'photo') {
+          return `
+            <div class="material-card">
+              <img src="${m.content}" alt="旅の写真">
+              <div class="card-footer">
+                <span class="material-type type-photo">📸 写真</span>
+                <button class="btn-delete" onclick="removeMaterial(${m.id})">🗑️</button>
+              </div>
+            </div>
+          `;
+        } else {
+          return `
+            <div class="material-card">
+              <div class="text-preview">${m.content.substring(0, 100)}${m.content.length > 100 ? '...' : ''}</div>
+              <div class="card-footer">
+                <span class="material-type type-text">💬 テキスト</span>
+                <button class="btn-delete" onclick="removeMaterial(${m.id})">🗑️</button>
+              </div>
+            </div>
+          `;
+        }
+      }).join('');
+    }
+
+    // 素材削除
+    async function removeMaterial(id) {
+      if (confirm('この素材を削除する？')) {
+        await deleteMaterial(id);
+        await renderMaterials();
+        showToast('削除したよ！', 'success');
+      }
+    }
+
+    // 旅行統計を更新
+    async function updateTripStats() {
+      const tripId = document.getElementById('generateTripSelect').value;
+      if (!tripId) {
+        document.getElementById('photoCount').textContent = '0';
+        document.getElementById('textCount').textContent = '0';
+        document.getElementById('totalCount').textContent = '0';
+        return;
+      }
+
+      const materials = await getMaterials(parseInt(tripId));
+      const photos = materials.filter(m => m.type === 'photo').length;
+      const texts = materials.filter(m => m.type === 'text').length;
+
+      document.getElementById('photoCount').textContent = photos;
+      document.getElementById('textCount').textContent = texts;
+      document.getElementById('totalCount').textContent = photos + texts;
+    }
+
+    document.getElementById('generateTripSelect').addEventListener('change', updateTripStats);
+
+    // スタイル選択
+    document.querySelectorAll('.style-option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.style-option').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+      });
+    });
+
+    // ブログ生成
+    async function generateBlog() {
+      const tripId = document.getElementById('generateTripSelect').value;
+      if (!tripId) {
+        showToast('旅行を選択してね！', 'error');
+        return;
+      }
+
+      const trips = await getTrips();
+      const trip = trips.find(t => t.id === parseInt(tripId));
+      const materials = await getMaterials(parseInt(tripId));
+
+      if (materials.length === 0) {
+        showToast('素材がないよ！先に追加してね', 'error');
+        return;
+      }
+
+      const style = document.querySelector('.style-option.selected').dataset.style;
+      const btn = document.getElementById('generateBtn');
+      const btnText = btn.querySelector('.btn-text');
+      const loading = btn.querySelector('.loading');
+
+      btn.disabled = true;
+      btnText.style.display = 'none';
+      loading.classList.add('active');
+
+      try {
+        // Claude APIを呼び出してブログ生成
+        const blogContent = await callClaudeAPI(trip, materials, style);
+        
+        // プレビューに表示
+        document.getElementById('previewFrame').innerHTML = blogContent;
+        
+        // プレビュータブに切り替え
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelector('[data-tab="preview"]').classList.add('active');
+        document.getElementById('tab-preview').classList.add('active');
+
+        showToast('ブログを生成したよ！ 🎉', 'success');
+      } catch (error) {
+        console.error('Error generating blog:', error);
+        // エラー詳細を画面に表示
+        document.getElementById('previewFrame').innerHTML = `
+          <div style="padding: 1.5rem; background: #FFE0E0; border-radius: 12px;">
+            <h3 style="color: #FF6B6B; margin-bottom: 1rem;">😢 エラーが発生したよ</h3>
+            <p style="word-break: break-all;">${error.message}</p>
+            <p style="margin-top: 1rem; font-size: 0.85rem; color: #666;">
+              ※ APIキーが正しく設定されているか確認してね
+            </p>
+          </div>
+        `;
+        // プレビュータブに切り替え
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelector('[data-tab="preview"]').classList.add('active');
+        document.getElementById('tab-preview').classList.add('active');
+        showToast('エラーが発生した...', 'error');
+      } finally {
+        btn.disabled = false;
+        btnText.style.display = 'inline';
+        loading.classList.remove('active');
+      }
+    }
+
+    // Claude API呼び出し
+    async function callClaudeAPI(trip, materials, style) {
+      const stylePrompts = {
+        casual: 'フレンドリーでカジュアルな口調で、友達に話すように',
+        diary: '日記のような親しみやすい一人称で、その日の感想を交えて',
+        magazine: '旅行雑誌の記事のようにプロフェッショナルで魅力的に',
+        poetic: 'エモーショナルで詩的な表現を使って、感動を伝えるように'
+      };
+
+      const texts = materials.filter(m => m.type === 'text').map(m => m.content).join('\n\n');
+      const photoCount = materials.filter(m => m.type === 'photo').length;
+
+      // APIキーとプロバイダーチェック
+      const apiKey = getApiKey();
+      const provider = getProvider();
+      
+      if (!apiKey) {
+        throw new Error('APIキーを設定してね！ページ上部の入力欄にAPIキーを入力してください。');
+      }
+
+      const prompt = `
+あなたは旅行ブログライターです。以下の情報をもとに、魅力的な旅行ブログ記事をHTMLで作成してください。
+
+【旅行名】${trip.name}
+【日付】${trip.date}
+【写真の数】${photoCount}枚
+【旅行メモ・感想】
+${texts || '(メモなし)'}
+
+【文章スタイル】${stylePrompts[style]}
+
+【出力形式】
+- 完全なHTMLは不要。記事本文のHTMLのみを出力してください
+- 見出し（h2, h3）、段落（p）、リスト（ul, li）を適切に使用
+- 写真の配置場所は [PHOTO_1], [PHOTO_2] のように記載
+- 読みやすく、スクロールして楽しめる構成に
+- 絵文字を適度に使用してポップに
+- 最後にまとめや次回への期待を入れる
+`;
+
+      let response;
+      let blogHtml;
+
+      try {
+        if (provider === 'openai') {
+          // OpenAI API
+          response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o',
+              max_tokens: 4000,
+              messages: [
+                { role: 'user', content: prompt }
+              ]
+            })
+          });
+
+          const responseText = await response.text();
+          let data;
+          try {
+            data = JSON.parse(responseText);
+          } catch (parseError) {
+            console.error('OpenAI response parse error:', responseText);
+            throw new Error(`OpenAI APIのレスポンス解析に失敗しました: ${responseText.substring(0, 100)}`);
+          }
+
+          if (!response.ok) {
+            throw new Error(data.error?.message || `OpenAI APIエラー (${response.status})`);
+          }
+
+          if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+            throw new Error('OpenAI APIからの応答が不正です');
+          }
+
+          blogHtml = data.choices[0].message.content;
+
+        } else {
+          // Anthropic API
+          response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': apiKey,
+              'anthropic-version': '2023-06-01',
+              'anthropic-dangerous-direct-browser-access': 'true'
+            },
+            body: JSON.stringify({
+              model: 'claude-sonnet-4-20250514',
+              max_tokens: 4000,
+              messages: [
+                { role: 'user', content: prompt }
+              ]
+            })
+          });
+
+          const responseText = await response.text();
+          let data;
+          try {
+            data = JSON.parse(responseText);
+          } catch (parseError) {
+            console.error('Anthropic response parse error:', responseText);
+            throw new Error(`Anthropic APIのレスポンス解析に失敗しました: ${responseText.substring(0, 100)}`);
+          }
+
+          if (!response.ok) {
+            throw new Error(data.error?.message || `Anthropic APIエラー (${response.status})`);
+          }
+
+          if (!data.content || !data.content[0] || !data.content[0].text) {
+            throw new Error('Anthropic APIからの応答が不正です');
+          }
+
+          blogHtml = data.content[0].text;
+        }
+      } catch (fetchError) {
+        if (fetchError.message.includes('API')) {
+          throw fetchError;
+        }
+        throw new Error(`ネットワークエラー: ${fetchError.message}`);
+      }
+
+      // 写真を挿入
+      const photos = materials.filter(m => m.type === 'photo');
+      photos.forEach((photo, index) => {
+        const placeholder = `[PHOTO_${index + 1}]`;
+        const imgTag = `<img src="${photo.content}" alt="旅の写真${index + 1}" style="max-width:100%; border-radius:12px; margin:1rem 0; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">`;
+        blogHtml = blogHtml.replace(placeholder, imgTag);
+      });
+
+      // スタイリングを追加
+      return `
+        <style>
+          .blog-content { font-family: 'Zen Maru Gothic', sans-serif; line-height: 1.8; color: #2D3436; }
+          .blog-content h2 { color: #FF6B6B; margin-top: 2rem; margin-bottom: 1rem; }
+          .blog-content h3 { color: #4ECDC4; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+          .blog-content p { margin-bottom: 1rem; }
+          .blog-content ul { padding-left: 1.5rem; margin-bottom: 1rem; }
+          .blog-content li { margin-bottom: 0.5rem; }
+        </style>
+        <div class="blog-content">
+          <h1 style="color: #A66CFF; margin-bottom: 0.5rem;">${trip.name}</h1>
+          <p style="color: #888; margin-bottom: 2rem;">📅 ${trip.date}</p>
+          ${blogHtml}
+        </div>
+      `;
+    }
+
+    // ブログをコピー
+    function copyBlog() {
+      const content = document.getElementById('previewFrame').innerText;
+      navigator.clipboard.writeText(content).then(() => {
+        showToast('コピーしたよ！ 📋', 'success');
+      });
+    }
+
+    // ブログをダウンロード
+    function downloadBlog() {
+      const content = document.getElementById('previewFrame').innerHTML;
+      const fullHtml = `
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>旅ブログ - TaviLog</title>
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body { max-width: 800px; margin: 0 auto; padding: 2rem; background: #FFF9F0; }
+  </style>
+</head>
+<body>
+  ${content}
+</body>
+</html>`;
+
+      const blob = new Blob([fullHtml], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'travel-blog.html';
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('ダウンロードしたよ！ 💾', 'success');
+    }
+
+    // モーダル
+    function openNewTripModal() {
+      document.getElementById('newTripModal').classList.add('active');
+      document.getElementById('tripDateInput').valueAsDate = new Date();
+    }
+
+    function closeNewTripModal() {
+      document.getElementById('newTripModal').classList.remove('active');
+      document.getElementById('tripNameInput').value = '';
+    }
+
+    async function createNewTrip() {
+      const name = document.getElementById('tripNameInput').value.trim();
+      const date = document.getElementById('tripDateInput').value;
+
+      if (!name) {
+        showToast('旅行の名前を入力してね！', 'error');
+        return;
+      }
+
+      const trip = { name, date, createdAt: new Date().toISOString() };
+      await addTrip(trip);
+      closeNewTripModal();
+      await loadTrips();
+      showToast('新しい旅を作成したよ！ 🧳', 'success');
+    }
+
+    // 旅行一覧を読み込み
+    async function loadTrips() {
+      const trips = await getTrips();
+      const options = trips.map(t => `<option value="${t.id}">${t.name} (${t.date})</option>`).join('');
+      
+      document.getElementById('tripSelect').innerHTML = '<option value="">旅行を選択...</option>' + options;
+      document.getElementById('materialsFilterTrip').innerHTML = '<option value="">すべての旅行</option>' + options;
+      document.getElementById('generateTripSelect').innerHTML = '<option value="">生成する旅行を選択...</option>' + options;
+    }
+
+    // トースト表示
+    function showToast(message, type = '') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'toast ' + type + ' show';
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
+    // APIキー・プロバイダー管理
+    function getProvider() {
+      return localStorage.getItem('tavilog_provider') || 'openai';
+    }
+
+    function saveProvider(provider) {
+      localStorage.setItem('tavilog_provider', provider);
+    }
+
+    function getApiKey() {
+      const provider = getProvider();
+      return localStorage.getItem(`tavilog_api_key_${provider}`) || '';
+    }
+
+    function saveApiKey(key) {
+      const provider = getProvider();
+      localStorage.setItem(`tavilog_api_key_${provider}`, key);
+      updateApiKeyStatus();
+    }
+
+    function updateApiKeyStatus() {
+      const key = getApiKey();
+      const provider = getProvider();
+      const status = document.getElementById('apiKeyStatus');
+      
+      let isValid = false;
+      if (provider === 'openai' && key && key.startsWith('sk-')) {
+        isValid = true;
+      } else if (provider === 'anthropic' && key && key.startsWith('sk-ant-')) {
+        isValid = true;
+      }
+      
+      if (isValid) {
+        status.textContent = '✓ 設定済み';
+        status.className = 'api-key-status valid';
+      } else if (key) {
+        status.textContent = '形式確認';
+        status.className = 'api-key-status invalid';
+      } else {
+        status.textContent = '未設定';
+        status.className = 'api-key-status invalid';
+      }
+    }
+
+    // プロバイダー切り替えイベント
+    document.getElementById('aiProvider').addEventListener('change', (e) => {
+      saveProvider(e.target.value);
+      // 保存済みのAPIキーを復元
+      const savedKey = getApiKey();
+      document.getElementById('apiKeyInput').value = savedKey;
+      updateApiKeyStatus();
+      const providerName = e.target.value === 'openai' ? 'ChatGPT' : 'Claude';
+      showToast(`${providerName}に切り替えたよ！`, 'success');
+    });
+
+    // APIキー入力イベント
+    document.getElementById('apiKeyInput').addEventListener('change', (e) => {
+      saveApiKey(e.target.value);
+      showToast('APIキーを保存したよ！ 🔑', 'success');
+    });
+
+    document.getElementById('apiKeyInput').addEventListener('input', (e) => {
+      const key = e.target.value;
+      const provider = getProvider();
+      const status = document.getElementById('apiKeyStatus');
+      
+      let isValid = false;
+      if (provider === 'openai' && key && key.startsWith('sk-')) {
+        isValid = true;
+      } else if (provider === 'anthropic' && key && key.startsWith('sk-ant-')) {
+        isValid = true;
+      }
+      
+      if (isValid) {
+        status.textContent = '✓ 有効';
+        status.className = 'api-key-status valid';
+      } else if (key) {
+        status.textContent = '形式確認';
+        status.className = 'api-key-status invalid';
+      } else {
+        status.textContent = '未設定';
+        status.className = 'api-key-status invalid';
+      }
+    });
+
+    // ========== ストレージ設定 ==========
+    
+    function getStorageType() {
+      return localStorage.getItem('tavilog_storage_type') || 'local';
+    }
+
+    function changeStorageType(type) {
+      localStorage.setItem('tavilog_storage_type', type);
+      const gdriveSettings = document.getElementById('gdriveSettings');
+      if (type === 'gdrive') {
+        gdriveSettings.style.display = 'block';
+        updateGdriveStatus();
+      } else {
+        gdriveSettings.style.display = 'none';
+      }
+      showToast(type === 'gdrive' ? 'Googleドライブモードに切り替え' : 'ローカル保存モードに切り替え', 'success');
+    }
+
+    // ========== Googleドライブ連携 ==========
+    
+    let gapi = null;
+    let tokenClient = null;
+    let gapiInited = false;
+    let gisInited = false;
+
+    function getGdriveClientId() {
+      return localStorage.getItem('tavilog_gdrive_client_id') || '';
+    }
+
+    function saveGdriveClientId(clientId) {
+      localStorage.setItem('tavilog_gdrive_client_id', clientId);
+    }
+
+    function isGdriveConnected() {
+      return localStorage.getItem('tavilog_gdrive_connected') === 'true';
+    }
+
+    function updateGdriveStatus() {
+      const status = document.getElementById('gdriveStatus');
+      const connectBtn = document.getElementById('gdriveConnectBtn');
+      const disconnectBtn = document.getElementById('gdriveDisconnectBtn');
+      
+      if (isGdriveConnected()) {
+        status.innerHTML = '<span class="status-icon">✅</span><span class="status-text">接続済み</span>';
+        status.className = 'gdrive-status connected';
+        connectBtn.style.display = 'none';
+        disconnectBtn.style.display = 'inline-block';
+      } else {
+        status.innerHTML = '<span class="status-icon">❌</span><span class="status-text">未接続</span>';
+        status.className = 'gdrive-status disconnected';
+        connectBtn.style.display = 'inline-block';
+        disconnectBtn.style.display = 'none';
+      }
+    }
+
+    async function connectGoogleDrive() {
+      const clientId = document.getElementById('gdriveClientId').value.trim();
+      
+      if (!clientId) {
+        showToast('Client IDを入力してね！', 'error');
+        return;
+      }
+
+      if (!clientId.includes('.apps.googleusercontent.com')) {
+        showToast('Client IDの形式が正しくないよ', 'error');
+        return;
+      }
+
+      saveGdriveClientId(clientId);
+
+      // Google API ライブラリを動的に読み込み
+      try {
+        await loadGoogleApi();
+        await initGoogleAuth(clientId);
+        showToast('Googleドライブに接続したよ！ ☁️', 'success');
+      } catch (error) {
+        console.error('Google Drive connection error:', error);
+        showToast('接続に失敗...設定を確認してね', 'error');
+      }
+    }
+
+    function loadGoogleApi() {
+      return new Promise((resolve, reject) => {
+        if (window.gapi) {
+          resolve();
+          return;
+        }
+
+        const script = document.createElement('script');
+        script.src = 'https://apis.google.com/js/api.js';
+        script.onload = () => {
+          gapi = window.gapi;
+          gapi.load('client', async () => {
+            await gapi.client.init({
+              discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+            });
+            gapiInited = true;
+            resolve();
+          });
+        };
+        script.onerror = reject;
+        document.body.appendChild(script);
+
+        // Google Identity Services
+        const gisScript = document.createElement('script');
+        gisScript.src = 'https://accounts.google.com/gsi/client';
+        gisScript.onload = () => {
+          gisInited = true;
+        };
+        document.body.appendChild(gisScript);
+      });
+    }
+
+    async function initGoogleAuth(clientId) {
+      return new Promise((resolve, reject) => {
+        // 待機
+        const checkReady = setInterval(() => {
+          if (gapiInited && window.google) {
+            clearInterval(checkReady);
+            
+            tokenClient = google.accounts.oauth2.initTokenClient({
+              client_id: clientId,
+              scope: 'https://www.googleapis.com/auth/drive.file',
+              callback: (response) => {
+                if (response.error) {
+                  reject(response);
+                  return;
+                }
+                localStorage.setItem('tavilog_gdrive_connected', 'true');
+                updateGdriveStatus();
+                syncToGoogleDrive();
+                resolve();
+              },
+            });
+
+            tokenClient.requestAccessToken({ prompt: 'consent' });
+          }
+        }, 100);
+
+        // タイムアウト
+        setTimeout(() => {
+          clearInterval(checkReady);
+          reject(new Error('Timeout'));
+        }, 30000);
+      });
+    }
+
+    function disconnectGoogleDrive() {
+      if (confirm('Googleドライブとの接続を解除する？\nローカルのデータは残るよ。')) {
+        localStorage.removeItem('tavilog_gdrive_connected');
+        if (window.google && google.accounts && google.accounts.oauth2) {
+          google.accounts.oauth2.revoke(gapi.client.getToken()?.access_token);
+        }
+        updateGdriveStatus();
+        showToast('接続を解除したよ', 'success');
+      }
+    }
+
+    async function syncToGoogleDrive() {
+      if (!isGdriveConnected() || getStorageType() !== 'gdrive') return;
+
+      try {
+        const trips = await getTrips();
+        const materials = await getMaterials();
+        const data = { trips, materials, exportedAt: new Date().toISOString() };
+
+        // TaviLogフォルダを探すか作成
+        let folderId = localStorage.getItem('tavilog_gdrive_folder_id');
+        
+        if (!folderId) {
+          // フォルダ検索
+          const folderResponse = await gapi.client.drive.files.list({
+            q: "name='TaviLog' and mimeType='application/vnd.google-apps.folder' and trashed=false",
+            fields: 'files(id, name)'
+          });
+
+          if (folderResponse.result.files.length > 0) {
+            folderId = folderResponse.result.files[0].id;
+          } else {
+            // フォルダ作成
+            const createResponse = await gapi.client.drive.files.create({
+              resource: {
+                name: 'TaviLog',
+                mimeType: 'application/vnd.google-apps.folder'
+              },
+              fields: 'id'
+            });
+            folderId = createResponse.result.id;
+          }
+          localStorage.setItem('tavilog_gdrive_folder_id', folderId);
+        }
+
+        // データファイルを更新または作成
+        let fileId = localStorage.getItem('tavilog_gdrive_file_id');
+        const fileContent = JSON.stringify(data);
+        const blob = new Blob([fileContent], { type: 'application/json' });
+
+        if (fileId) {
+          // 既存ファイルを更新
+          await gapi.client.request({
+            path: `/upload/drive/v3/files/${fileId}`,
+            method: 'PATCH',
+            params: { uploadType: 'media' },
+            body: fileContent
+          });
+        } else {
+          // 新規ファイル作成
+          const metadata = {
+            name: 'tavilog-data.json',
+            parents: [folderId]
+          };
+
+          const form = new FormData();
+          form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+          form.append('file', blob);
+
+          const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${gapi.client.getToken().access_token}`
+            },
+            body: form
+          });
+          const result = await response.json();
+          localStorage.setItem('tavilog_gdrive_file_id', result.id);
+        }
+
+        console.log('Synced to Google Drive');
+      } catch (error) {
+        console.error('Google Drive sync error:', error);
+      }
+    }
+
+    async function loadFromGoogleDrive() {
+      if (!isGdriveConnected() || getStorageType() !== 'gdrive') return;
+
+      try {
+        const fileId = localStorage.getItem('tavilog_gdrive_file_id');
+        if (!fileId) return;
+
+        const response = await gapi.client.drive.files.get({
+          fileId: fileId,
+          alt: 'media'
+        });
+
+        const data = response.result;
+        if (data.trips && data.materials) {
+          // ローカルDBにインポート
+          for (const trip of data.trips) {
+            await addTrip(trip);
+          }
+          for (const material of data.materials) {
+            await addMaterial(material);
+          }
+          await loadTrips();
+          showToast('Googleドライブからデータを読み込んだよ！', 'success');
+        }
+      } catch (error) {
+        console.error('Load from Google Drive error:', error);
+      }
+    }
+
+    // ========== データエクスポート/インポート ==========
+
+    async function exportData() {
+      try {
+        const trips = await getTrips();
+        const materials = await getMaterials();
+        const data = {
+          trips,
+          materials,
+          exportedAt: new Date().toISOString(),
+          version: '1.0'
+        };
+
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `tavilog-backup-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('データをエクスポートしたよ！ 📤', 'success');
+      } catch (error) {
+        showToast('エクスポートに失敗...', 'error');
+      }
+    }
+
+    async function importData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+
+        if (!data.trips || !data.materials) {
+          throw new Error('Invalid format');
+        }
+
+        if (!confirm(`${data.trips.length}件の旅行と${data.materials.length}件の素材をインポートする？\n既存のデータに追加されるよ。`)) {
+          return;
+        }
+
+        for (const trip of data.trips) {
+          const { id, ...tripData } = trip; // idを除外
+          await addTrip(tripData);
+        }
+
+        for (const material of data.materials) {
+          const { id, ...materialData } = material;
+          await addMaterial(materialData);
+        }
+
+        await loadTrips();
+        showToast('データをインポートしたよ！ 📥', 'success');
+      } catch (error) {
+        showToast('インポートに失敗...ファイル形式を確認してね', 'error');
+      }
+
+      event.target.value = '';
+    }
+
+    async function clearAllData() {
+      if (!confirm('本当にすべてのデータを削除する？\nこの操作は取り消せないよ！')) {
+        return;
+      }
+
+      if (!confirm('最終確認：本当に削除していい？')) {
+        return;
+      }
+
+      try {
+        const transaction = db.transaction(['trips', 'materials', 'blogs'], 'readwrite');
+        transaction.objectStore('trips').clear();
+        transaction.objectStore('materials').clear();
+        transaction.objectStore('blogs').clear();
+
+        await new Promise((resolve, reject) => {
+          transaction.oncomplete = resolve;
+          transaction.onerror = reject;
+        });
+
+        await loadTrips();
+        showToast('すべてのデータを削除したよ', 'success');
+      } catch (error) {
+        showToast('削除に失敗...', 'error');
+      }
+    }
+
+    // ========== 初期化 ==========
+    
+    initDB().then(() => {
+      loadTrips();
+      
+      // プロバイダーとAPIキーを復元
+      const savedProvider = getProvider();
+      document.getElementById('aiProvider').value = savedProvider;
+      const savedKey = getApiKey();
+      if (savedKey) {
+        document.getElementById('apiKeyInput').value = savedKey;
+      }
+      updateApiKeyStatus();
+
+      // ストレージ設定を復元
+      const storageType = getStorageType();
+      document.querySelector(`input[name="storageType"][value="${storageType}"]`).checked = true;
+      if (storageType === 'gdrive') {
+        document.getElementById('gdriveSettings').style.display = 'block';
+        const savedClientId = getGdriveClientId();
+        if (savedClientId) {
+          document.getElementById('gdriveClientId').value = savedClientId;
+        }
+        updateGdriveStatus();
+      }
+
+      // 現在のオリジンを設定ガイドに表示
+      const originEl = document.getElementById('currentOrigin');
+      if (originEl) {
+        originEl.textContent = window.location.origin || 'file://（ローカルファイル）';
+      }
+
+      console.log('TaviLog initialized! 🚀');
+    });
+  </script>
+</body>
+</html>
