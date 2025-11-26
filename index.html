@@ -1577,11 +1577,16 @@ ${texts || '(メモなし)'}
         throw new Error(`ネットワークエラー: ${fetchError.message}`);
       }
 
-      // 写真を挿入
+      // 写真を挿入（サムネイル + クリックで拡大）
       const photos = materials.filter(m => m.type === 'photo');
       photos.forEach((photo, index) => {
         const placeholder = `[PHOTO_${index + 1}]`;
-        const imgTag = `<img src="${photo.content}" alt="旅の写真${index + 1}" style="max-width:100%; border-radius:12px; margin:1rem 0; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">`;
+        const imgTag = `
+          <div class="photo-thumbnail" onclick="openLightbox('${photo.content.replace(/'/g, "\\'")}')">
+            <img src="${photo.content}" alt="旅の写真${index + 1}">
+            <div class="photo-zoom-hint">🔍 タップで拡大</div>
+          </div>
+        `;
         blogHtml = blogHtml.replace(placeholder, imgTag);
       });
 
@@ -1594,6 +1599,36 @@ ${texts || '(メモなし)'}
           .blog-content p { margin-bottom: 1rem; }
           .blog-content ul { padding-left: 1.5rem; margin-bottom: 1rem; }
           .blog-content li { margin-bottom: 0.5rem; }
+          .photo-thumbnail {
+            position: relative;
+            cursor: pointer;
+            margin: 1rem 0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+          }
+          .photo-thumbnail:hover, .photo-thumbnail:active {
+            transform: scale(1.02);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+          }
+          .photo-thumbnail img {
+            width: 100%;
+            max-height: 300px;
+            object-fit: cover;
+            display: block;
+          }
+          .photo-zoom-hint {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            opacity: 0.8;
+          }
         </style>
         <div class="blog-content">
           <h1 style="color: #A66CFF; margin-bottom: 0.5rem;">${trip.name}</h1>
@@ -1957,6 +1992,68 @@ ${texts || '(メモなし)'}
 
       console.log('TaviLog initialized! 🚀');
     });
+
+    // ライトボックス（写真拡大表示）
+    function openLightbox(imageSrc) {
+      const lightbox = document.getElementById('lightbox');
+      const lightboxImg = document.getElementById('lightbox-img');
+      lightboxImg.src = imageSrc;
+      lightbox.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+      const lightbox = document.getElementById('lightbox');
+      lightbox.style.display = 'none';
+      document.body.style.overflow = '';
+    }
   </script>
+
+  <!-- ライトボックス（写真拡大表示用） -->
+  <div id="lightbox" onclick="closeLightbox()" style="
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    box-sizing: border-box;
+  ">
+    <img id="lightbox-img" style="
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    " onclick="event.stopPropagation()">
+    <div style="
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      color: white;
+      font-size: 2rem;
+      cursor: pointer;
+      background: rgba(0,0,0,0.5);
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    " onclick="closeLightbox()">✕</div>
+    <div style="
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.7);
+      font-size: 0.9rem;
+    ">タップで閉じる</div>
+  </div>
 </body>
 </html>
