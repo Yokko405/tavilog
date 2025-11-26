@@ -1175,6 +1175,7 @@
         <div class="preview-header">
           <h2 class="section-title">👀 ブログプレビュー</h2>
           <div class="preview-actions">
+            <button class="btn-action btn-save" onclick="saveCurrentBlog()" style="background: linear-gradient(135deg, #4ECDC4, #44A08D); color: white;">💖 お気に入り保存</button>
             <button class="btn-action btn-copy" onclick="copyBlog()">📋 コピー</button>
             <button class="btn-action btn-download" onclick="downloadBlog()">💾 HTML保存</button>
           </div>
@@ -1185,6 +1186,12 @@
             <div class="preview-placeholder-icon">📝</div>
             <p>ブログを生成すると、ここにプレビューが表示されます</p>
           </div>
+        </div>
+
+        <!-- 保存済みブログ一覧 -->
+        <div class="saved-blogs-section" style="margin-top: 2rem;">
+          <h3 class="section-title" style="font-size: 1.1rem;">💖 保存したブログ</h3>
+          <div id="savedBlogsList" class="saved-blogs-list" style="display: grid; gap: 0.75rem; margin-top: 1rem;"></div>
         </div>
       </div>
     </div>
@@ -1445,6 +1452,47 @@
       });
     }
 
+    // ブログを保存
+    async function saveBlog(blog) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['blogs'], 'readwrite');
+        const store = transaction.objectStore('blogs');
+        const request = store.add(blog);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    // ブログを取得
+    async function getBlogs(tripId = null) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['blogs'], 'readonly');
+        const store = transaction.objectStore('blogs');
+        
+        if (tripId) {
+          const index = store.index('tripId');
+          const request = index.getAll(tripId);
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        } else {
+          const request = store.getAll();
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        }
+      });
+    }
+
+    // ブログを削除
+    async function deleteBlog(id) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['blogs'], 'readwrite');
+        const store = transaction.objectStore('blogs');
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    }
+
     // タブ切り替え
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1654,6 +1702,10 @@
         // Claude APIを呼び出してブログ生成
         const blogContent = await callClaudeAPI(trip, materials, style);
         
+        // 保存用に現在の旅行IDとスタイルを記録
+        currentBlogTripId = trip.id;
+        currentBlogStyle = style;
+        
         // プレビューに表示
         document.getElementById('previewFrame').innerHTML = blogContent;
         
@@ -1846,6 +1898,98 @@ ${texts || '(メモなし)'}
       navigator.clipboard.writeText(content).then(() => {
         showToast('コピーしたよ！ 📋', 'success');
       });
+    }
+
+    // 現在のブログを保存
+    let currentBlogTripId = null;
+    let currentBlogStyle = null;
+
+    async function saveCurrentBlog() {
+      const content = document.getElementById('previewFrame').innerHTML;
+      
+      if (!content || content.includes('preview-placeholder')) {
+        showToast('保存するブログがないよ！', 'error');
+        return;
+      }
+
+      if (!currentBlogTripId) {
+        showToast('旅行情報が見つからない...', 'error');
+        return;
+      }
+
+      const trips = await getTrips();
+      const trip = trips.find(t => t.id === currentBlogTripId);
+      
+      const blog = {
+        tripId: currentBlogTripId,
+        tripName: trip ? trip.name : '不明な旅行',
+        style: currentBlogStyle || 'casual',
+        content: content,
+        createdAt: new Date().toISOString()
+      };
+
+      await saveBlog(blog);
+      showToast('ブログを保存したよ！ 💖', 'success');
+      loadSavedBlogs();
+      
+      // Googleドライブ同期
+      if (getStorageType() === 'gdrive') {
+        syncToGoogleDrive();
+      }
+    }
+
+    // 保存済みブログ一覧を読み込み
+    async function loadSavedBlogs() {
+      const blogs = await getBlogs();
+      const container = document.getElementById('savedBlogsList');
+      
+      if (blogs.length === 0) {
+        container.innerHTML = '<p style="color: #888; text-align: center; padding: 1rem;">まだ保存したブログがないよ</p>';
+        return;
+      }
+
+      // 新しい順にソート
+      blogs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      container.innerHTML = blogs.map(blog => `
+        <div class="saved-blog-item" style="background: white; border-radius: 12px; padding: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center;">
+          <div style="flex: 1;">
+            <div style="font-weight: 600; color: #2D3436;">${blog.tripName}</div>
+            <div style="font-size: 0.8rem; color: #888; margin-top: 0.25rem;">
+              ${new Date(blog.createdAt).toLocaleDateString('ja-JP')} 保存
+            </div>
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button onclick="viewSavedBlog(${blog.id})" style="background: #4ECDC4; color: white; border: none; border-radius: 8px; padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.85rem;">👀 見る</button>
+            <button onclick="deleteSavedBlog(${blog.id})" style="background: #FF6B6B; color: white; border: none; border-radius: 8px; padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.85rem;">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // 保存済みブログを表示
+    async function viewSavedBlog(blogId) {
+      const blogs = await getBlogs();
+      const blog = blogs.find(b => b.id === blogId);
+      
+      if (blog) {
+        document.getElementById('previewFrame').innerHTML = blog.content;
+        showToast('保存したブログを表示したよ！', 'success');
+      }
+    }
+
+    // 保存済みブログを削除
+    async function deleteSavedBlog(blogId) {
+      if (confirm('このブログを削除する？')) {
+        await deleteBlog(blogId);
+        showToast('ブログを削除したよ', 'success');
+        loadSavedBlogs();
+        
+        // Googleドライブ同期
+        if (getStorageType() === 'gdrive') {
+          syncToGoogleDrive();
+        }
+      }
     }
 
     // ブログをダウンロード
@@ -2193,7 +2337,8 @@ ${texts || '(メモなし)'}
       try {
         const trips = await getTrips();
         const materials = await getMaterials();
-        const data = { trips, materials, exportedAt: new Date().toISOString() };
+        const blogs = await getBlogs();
+        const data = { trips, materials, blogs, exportedAt: new Date().toISOString() };
 
         // TaviLogフォルダを探すか作成
         let folderId = localStorage.getItem('tavilog_gdrive_folder_id');
@@ -2383,6 +2528,7 @@ ${texts || '(メモなし)'}
     
     initDB().then(() => {
       loadTrips();
+      loadSavedBlogs();
       
       // プロバイダーとAPIキーを復元
       const savedProvider = getProvider();
