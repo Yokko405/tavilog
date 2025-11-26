@@ -2079,19 +2079,15 @@ ${texts || '(メモなし)'}
       }
 
       saveGdriveClientId(clientId);
-      showToast('接続中...しばらくお待ちください', '');
 
       // Google API ライブラリを動的に読み込み
       try {
-        showToast('Google APIを読み込み中...', '');
         await loadGoogleApi();
-        showToast('認証画面を開いています...', '');
         await initGoogleAuth(clientId);
         showToast('Googleドライブに接続したよ！ ☁️', 'success');
       } catch (error) {
         console.error('Google Drive connection error:', error);
-        showToast('エラー: ' + (error.message || error), 'error');
-        alert('接続エラーの詳細:\n' + (error.message || JSON.stringify(error)));
+        showToast('接続に失敗...設定を確認してね', 'error');
       }
     }
 
@@ -2129,50 +2125,35 @@ ${texts || '(メモなし)'}
 
     async function initGoogleAuth(clientId) {
       return new Promise((resolve, reject) => {
-        // GAPIとGISの両方が準備できるまで待機
+        // 待機
         const checkReady = setInterval(() => {
-          if (gapiInited && gisInited && window.google && window.google.accounts) {
+          if (gapiInited && window.google) {
             clearInterval(checkReady);
             
-            try {
-              tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: clientId,
-                scope: 'https://www.googleapis.com/auth/drive.file',
-                callback: (response) => {
-                  console.log('OAuth callback received:', response);
-                  if (response.error) {
-                    console.error('OAuth error:', response);
-                    reject(new Error(response.error_description || response.error));
-                    return;
-                  }
-                  if (response.access_token) {
-                    console.log('Access token received successfully');
-                    localStorage.setItem('tavilog_gdrive_connected', 'true');
-                    updateGdriveStatus();
-                    syncToGoogleDrive();
-                    resolve();
-                  }
-                },
-                error_callback: (error) => {
-                  console.error('OAuth error_callback:', error);
-                  reject(new Error(error.message || 'OAuth認証エラー'));
+            tokenClient = google.accounts.oauth2.initTokenClient({
+              client_id: clientId,
+              scope: 'https://www.googleapis.com/auth/drive.file',
+              callback: (response) => {
+                if (response.error) {
+                  reject(response);
+                  return;
                 }
-              });
+                localStorage.setItem('tavilog_gdrive_connected', 'true');
+                updateGdriveStatus();
+                syncToGoogleDrive();
+                resolve();
+              },
+            });
 
-              console.log('Requesting access token...');
-              tokenClient.requestAccessToken({ prompt: 'consent' });
-            } catch (err) {
-              console.error('initTokenClient error:', err);
-              reject(err);
-            }
+            tokenClient.requestAccessToken({ prompt: 'consent' });
           }
         }, 100);
 
-        // タイムアウト（60秒に延長）
+        // タイムアウト
         setTimeout(() => {
           clearInterval(checkReady);
-          reject(new Error('タイムアウト：Google APIの読み込みに時間がかかりすぎています'));
-        }, 60000);
+          reject(new Error('Timeout'));
+        }, 30000);
       });
     }
 
