@@ -2353,6 +2353,50 @@ ${texts || '(メモなし)'}
         }, 60000);
       });
     }
+    
+    // ページ読み込み時にサイレントでトークンを取得（同意画面なし）
+    async function initGoogleAuthSilent(clientId) {
+      return new Promise((resolve, reject) => {
+        const checkReady = setInterval(() => {
+          if (gapiInited && gisInited && window.google && window.google.accounts) {
+            clearInterval(checkReady);
+            
+            try {
+              const silentTokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: clientId,
+                scope: 'https://www.googleapis.com/auth/drive.file',
+                callback: (response) => {
+                  if (response.error) {
+                    console.log('Silent auth failed (expected if first time):', response.error);
+                    resolve(false);
+                    return;
+                  }
+                  if (response.access_token) {
+                    console.log('Silent auth successful - token obtained');
+                    resolve(true);
+                  }
+                },
+                error_callback: (error) => {
+                  console.log('Silent auth error:', error);
+                  resolve(false);
+                }
+              });
+              
+              // prompt: '' で同意画面なしでトークン取得を試みる
+              silentTokenClient.requestAccessToken({ prompt: '' });
+            } catch (err) {
+              console.log('Silent auth setup error:', err);
+              resolve(false);
+            }
+          }
+        }, 100);
+        
+        setTimeout(() => {
+          clearInterval(checkReady);
+          resolve(false);
+        }, 10000);
+      });
+    }
 
     function disconnectGoogleDrive() {
       if (confirm('Googleドライブとの接続を解除する？\nローカルのデータは残るよ。')) {
@@ -2368,22 +2412,17 @@ ${texts || '(メモなし)'}
     async function syncToGoogleDrive() {
       if (!isGdriveConnected() || getStorageType() !== 'gdrive') return;
       
-      // gapi.clientがない場合は再初期化
-      if (!gapi || !gapi.client || !gapi.client.getToken()) {
-        console.log('GAPI not ready, attempting to reinitialize...');
-        try {
-          await loadGoogleApi();
-          const clientId = getGdriveClientId();
-          if (clientId) {
-            await initGoogleAuth(clientId);
-          } else {
-            console.error('No client ID found');
-            return;
-          }
-        } catch (error) {
-          console.error('Failed to reinitialize GAPI:', error);
-          return;
-        }
+      // gapi.clientがない場合はスキップ（エラーを防止）
+      if (!window.gapi || !gapi.client) {
+        console.log('GAPI not ready, skipping sync. Please reconnect to Google Drive.');
+        return;
+      }
+      
+      // トークンがない場合もスキップ
+      const token = gapi.client.getToken();
+      if (!token) {
+        console.log('No access token, skipping sync. Please reconnect to Google Drive.');
+        return;
       }
 
       try {
@@ -2698,10 +2737,12 @@ ${texts || '(メモなし)'}
         }
         updateGdriveStatus();
         
-        // Googleドライブ接続済みなら、GAPIを自動で再初期化
+        // Googleドライブ接続済みなら、GAPIを自動で再初期化してトークン取得
         if (isGdriveConnected() && savedClientId) {
-          loadGoogleApi().then(() => {
+          loadGoogleApi().then(async () => {
             console.log('GAPI loaded on startup');
+            // サイレントにトークンを取得（prompt: ''で同意画面なし）
+            await initGoogleAuthSilent(savedClientId);
           }).catch(err => {
             console.log('GAPI load on startup failed:', err);
           });
