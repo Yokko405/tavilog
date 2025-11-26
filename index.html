@@ -2367,6 +2367,24 @@ ${texts || '(メモなし)'}
 
     async function syncToGoogleDrive() {
       if (!isGdriveConnected() || getStorageType() !== 'gdrive') return;
+      
+      // gapi.clientがない場合は再初期化
+      if (!gapi || !gapi.client || !gapi.client.getToken()) {
+        console.log('GAPI not ready, attempting to reinitialize...');
+        try {
+          await loadGoogleApi();
+          const clientId = getGdriveClientId();
+          if (clientId) {
+            await initGoogleAuth(clientId);
+          } else {
+            console.error('No client ID found');
+            return;
+          }
+        } catch (error) {
+          console.error('Failed to reinitialize GAPI:', error);
+          return;
+        }
+      }
 
       try {
         const trips = await getTrips();
@@ -2679,6 +2697,15 @@ ${texts || '(メモなし)'}
           document.getElementById('gdriveClientId').value = savedClientId;
         }
         updateGdriveStatus();
+        
+        // Googleドライブ接続済みなら、GAPIを自動で再初期化
+        if (isGdriveConnected() && savedClientId) {
+          loadGoogleApi().then(() => {
+            console.log('GAPI loaded on startup');
+          }).catch(err => {
+            console.log('GAPI load on startup failed:', err);
+          });
+        }
       }
 
       // 現在のオリジンを設定ガイドに表示
