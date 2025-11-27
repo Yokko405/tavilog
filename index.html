@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TaviLog - 旅の記録をブログに</title>
+  <link rel="icon" type="image/png" href="images/favicon.png">
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1665,6 +1667,8 @@ ${texts || '(メモなし)'}
           }
 
           blogHtml = data.choices[0].message.content;
+          // マークダウンのコードブロック記法を除去
+          blogHtml = blogHtml.replace(/^```html\n?/i, '').replace(/^```\n?/i, '').replace(/\n?```$/g, '');
 
         } else {
           // Anthropic API with Vision（写真の内容を認識）
@@ -1728,6 +1732,8 @@ ${texts || '(メモなし)'}
           }
 
           blogHtml = data.content[0].text;
+          // マークダウンのコードブロック記法を除去
+          blogHtml = blogHtml.replace(/^```html\n?/i, '').replace(/^```\n?/i, '').replace(/\n?```$/g, '');
         }
       } catch (fetchError) {
         if (fetchError.message.includes('API')) {
