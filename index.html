@@ -668,6 +668,22 @@
       color: #FF6B6B;
     }
 
+    .api-help-btn {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .api-help-btn:hover {
+      background: rgba(255, 255, 255, 0.4);
+      transform: scale(1.1);
+    }
+
     /* モーダル */
     .modal-overlay {
       display: none;
@@ -983,6 +999,7 @@
     <label>🔑</label>
     <input type="password" class="api-key-input" id="apiKeyInput" placeholder="APIキーを入力...">
     <span class="api-key-status invalid" id="apiKeyStatus">未設定</span>
+    <button class="api-help-btn" onclick="openApiHelpModal()" title="APIキーの取得方法">❓</button>
   </div>
 
   <div class="container">
@@ -1175,6 +1192,53 @@
       <div class="modal-actions">
         <button class="btn-modal btn-cancel" onclick="closeNewTripModal()">キャンセル</button>
         <button class="btn-modal btn-confirm" onclick="createNewTrip()">作成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- APIキーヘルプモーダル -->
+  <div class="modal-overlay" id="apiHelpModal">
+    <div class="modal" style="max-width: 500px;">
+      <h3 class="modal-title">🔑 APIキーの取得方法</h3>
+      <div style="text-align: left; line-height: 1.8;">
+        <div id="openaiHelp">
+          <h4 style="color: var(--primary); margin: 1rem 0 0.5rem;">ChatGPT (OpenAI) の場合</h4>
+          <ol style="padding-left: 1.5rem; margin: 0.5rem 0;">
+            <li><a href="https://platform.openai.com/signup" target="_blank" style="color: var(--secondary);">OpenAIのサイト</a>でアカウント作成</li>
+            <li>ログイン後、右上のアイコン → 「API keys」をクリック</li>
+            <li>「Create new secret key」をクリック</li>
+            <li>作成されたキーをコピー（sk-で始まる文字列）</li>
+            <li>上の入力欄に貼り付け ✨</li>
+          </ol>
+          <p style="font-size: 0.85rem; color: var(--text-light); margin-top: 0.5rem;">
+            💡 初回は電話番号認証と、クレジットカード登録が必要です（従量課金）
+          </p>
+        </div>
+        
+        <div id="anthropicHelp">
+          <h4 style="color: var(--purple); margin: 1rem 0 0.5rem;">Claude (Anthropic) の場合</h4>
+          <ol style="padding-left: 1.5rem; margin: 0.5rem 0;">
+            <li><a href="https://console.anthropic.com/" target="_blank" style="color: var(--secondary);">Anthropicのコンソール</a>でアカウント作成</li>
+            <li>ログイン後、「API Keys」をクリック</li>
+            <li>「Create Key」をクリック</li>
+            <li>作成されたキーをコピー（sk-ant-で始まる文字列）</li>
+            <li>上の入力欄に貼り付け ✨</li>
+          </ol>
+          <p style="font-size: 0.85rem; color: var(--text-light); margin-top: 0.5rem;">
+            💡 こちらもクレジットカード登録が必要です（従量課金）
+          </p>
+        </div>
+
+        <div style="background: rgba(78, 205, 196, 0.1); padding: 1rem; border-radius: 12px; margin-top: 1rem;">
+          <p style="font-size: 0.9rem; margin: 0;">
+            <strong>💰 料金の目安</strong><br>
+            ブログ1回生成で約 5〜20円 程度です。<br>
+            写真の枚数やブログの長さによって変わります。
+          </p>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-modal btn-confirm" onclick="closeApiHelpModal()">わかった！</button>
       </div>
     </div>
   </div>
@@ -1414,7 +1478,15 @@
     const dropzone = document.getElementById('dropzone');
     const fileInput = document.getElementById('fileInput');
 
-    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('click', () => {
+      const tripId = parseInt(document.getElementById('tripSelect').value);
+      if (!tripId) {
+        showToast('先に旅行を選択してね！ ↑', 'error');
+        document.getElementById('tripSelect').focus();
+        return;
+      }
+      fileInput.click();
+    });
     
     dropzone.addEventListener('dragover', (e) => {
       e.preventDefault();
@@ -2023,6 +2095,15 @@ ${texts || '(メモなし)'}
     function closeNewTripModal() {
       document.getElementById('newTripModal').classList.remove('active');
       document.getElementById('tripNameInput').value = '';
+    }
+
+    // APIヘルプモーダル
+    function openApiHelpModal() {
+      document.getElementById('apiHelpModal').classList.add('active');
+    }
+
+    function closeApiHelpModal() {
+      document.getElementById('apiHelpModal').classList.remove('active');
     }
 
     async function createNewTrip() {
