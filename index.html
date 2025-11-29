@@ -226,6 +226,23 @@
       border-style: solid;
     }
 
+    .btn-delete-trip {
+      padding: 0.8rem 1rem;
+      border: none;
+      border-radius: 12px;
+      background: rgba(255, 107, 107, 0.1);
+      color: var(--primary);
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-delete-trip:hover {
+      background: var(--primary);
+      color: white;
+      transform: scale(1.05);
+    }
+
     /* ドロップゾーン */
     .dropzone {
       border: 3px dashed #DDD;
@@ -1000,6 +1017,9 @@
           <button class="btn-new-trip" onclick="openNewTripModal()">
             ➕ 新しい旅を作成
           </button>
+          <button class="btn-delete-trip" onclick="deleteTripWithConfirm()" title="選択中の旅を削除">
+            🗑️
+          </button>
         </div>
 
         <div class="dropzone" id="dropzone">
@@ -1226,6 +1246,69 @@
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
       });
+    }
+
+    // 旅行を削除（関連する素材とブログも削除）
+    async function deleteTrip(tripId) {
+      return new Promise(async (resolve, reject) => {
+        try {
+          // 旅行を削除
+          const tripTransaction = db.transaction(['trips'], 'readwrite');
+          const tripStore = tripTransaction.objectStore('trips');
+          await new Promise((res, rej) => {
+            const req = tripStore.delete(tripId);
+            req.onsuccess = () => res();
+            req.onerror = () => rej(req.error);
+          });
+
+          // 関連する素材を削除
+          const materials = await getMaterials(tripId);
+          for (const material of materials) {
+            await deleteMaterial(material.id);
+          }
+
+          // 関連するブログを削除
+          const blogs = await getBlogs(tripId);
+          for (const blog of blogs) {
+            await deleteBlog(blog.id);
+          }
+
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      });
+    }
+
+    // 確認付き旅行削除
+    async function deleteTripWithConfirm() {
+      const tripSelect = document.getElementById('tripSelect');
+      const tripId = parseInt(tripSelect.value);
+      
+      if (!tripId) {
+        showToast('削除する旅を選択してね！', 'error');
+        return;
+      }
+
+      const trips = await getTrips();
+      const trip = trips.find(t => t.id === tripId);
+      
+      if (!trip) {
+        showToast('旅が見つからないよ', 'error');
+        return;
+      }
+
+      if (confirm(`「${trip.name}」を削除しますか？\n\n⚠️ この旅に関連する写真・メモ・ブログもすべて削除されます。`)) {
+        try {
+          await deleteTrip(tripId);
+          await loadTrips();
+          await loadMaterialList();
+          showToast('旅を削除したよ 🗑️', 'success');
+        } catch (error) {
+          console.error('Delete trip error:', error);
+          showToast('削除に失敗しました', 'error');
+        }
+      }
     }
 
     // 素材を取得
