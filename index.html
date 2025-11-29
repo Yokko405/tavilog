@@ -2066,9 +2066,14 @@ ${texts || '(メモなし)'}
       const trips = await getTrips();
       const trip = trips.find(t => t.id === currentBlogTripId);
       
+      // プレビューからタイトル（h1）を取得（編集後の内容を反映）
+      const previewFrame = document.getElementById('previewFrame');
+      const h1Element = previewFrame.querySelector('h1');
+      const blogTitle = h1Element ? h1Element.textContent.trim() : (trip ? trip.name : '不明な旅行');
+      
       const blog = {
         tripId: currentBlogTripId,
-        tripName: trip ? trip.name : '不明な旅行',
+        tripName: blogTitle,
         style: currentBlogStyle || 'casual',
         content: content,
         createdAt: new Date().toISOString()
@@ -2114,6 +2119,17 @@ ${texts || '(メモなし)'}
       const blog = blogs.find(b => b.id === blogId);
       
       if (blog) {
+        // 編集モードがONの場合はOFFにする
+        if (isEditMode) {
+          isEditMode = false;
+          const previewFrame = document.getElementById('previewFrame');
+          const editBtn = document.getElementById('editModeBtn');
+          previewFrame.classList.remove('edit-mode');
+          editBtn.textContent = '✏️ 編集';
+          editBtn.style.background = 'linear-gradient(135deg, #FFE66D, #FFA500)';
+          editBtn.style.color = '#2D3436';
+        }
+        
         document.getElementById('previewFrame').innerHTML = blog.content;
         showToast('保存したブログを表示したよ！', 'success');
       }
