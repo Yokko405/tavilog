@@ -1136,7 +1136,7 @@
           <h2 class="section-title">👀 ブログプレビュー</h2>
           <div class="preview-actions">
             <button class="btn-action btn-edit" id="editModeBtn" onclick="toggleEditMode()" style="background: linear-gradient(135deg, #FFE66D, #FFA500); color: #2D3436;">✏️ 編集</button>
-            <button class="btn-action btn-save" onclick="saveCurrentBlog()" style="background: linear-gradient(135deg, #4ECDC4, #44A08D); color: white;">💖 お気に入り保存</button>
+            <button class="btn-action btn-save" id="saveBlogBtn" onclick="saveOrUpdateBlog()" style="background: linear-gradient(135deg, #4ECDC4, #44A08D); color: white;">💖 お気に入り保存</button>
             <button class="btn-action btn-copy" onclick="copyBlog()">📋 コピー</button>
             <button class="btn-action btn-download" onclick="downloadBlog()">💾 HTML保存</button>
           </div>
@@ -1691,6 +1691,10 @@
         // 保存用に現在の旅行IDとスタイルを記録
         currentBlogTripId = trip.id;
         currentBlogStyle = style;
+        currentViewingBlogId = null;  // 新規生成なのでリセット
+        
+        // ボタンを「お気に入り保存」に戻す
+        updateSaveButtonState();
         
         // プレビューに表示
         document.getElementById('previewFrame').innerHTML = blogContent;
@@ -2049,6 +2053,28 @@ ${texts || '(メモなし)'}
     // 現在のブログを保存
     let currentBlogTripId = null;
     let currentBlogStyle = null;
+    let currentViewingBlogId = null;  // お気に入りから表示中のブログID
+
+    // 保存または更新を判断して実行
+    async function saveOrUpdateBlog() {
+      if (currentViewingBlogId) {
+        await updateSavedBlog();
+      } else {
+        await saveCurrentBlog();
+      }
+    }
+
+    // 保存ボタンの表示を更新
+    function updateSaveButtonState() {
+      const btn = document.getElementById('saveBlogBtn');
+      if (currentViewingBlogId) {
+        btn.innerHTML = '🔄 更新保存';
+        btn.style.background = 'linear-gradient(135deg, #A66CFF, #7B4FFF)';
+      } else {
+        btn.innerHTML = '💖 お気に入り保存';
+        btn.style.background = 'linear-gradient(135deg, #4ECDC4, #44A08D)';
+      }
+    }
 
     async function saveCurrentBlog() {
       const content = document.getElementById('previewFrame').innerHTML;
@@ -2082,6 +2108,54 @@ ${texts || '(メモなし)'}
 
       await saveBlog(blog);
       showToast('ブログを保存したよ！ 💖', 'success');
+      loadSavedBlogs();
+    }
+
+    // 保存済みブログを更新
+    async function updateSavedBlog() {
+      const content = document.getElementById('previewFrame').innerHTML;
+      
+      if (!content || content.includes('preview-placeholder')) {
+        showToast('更新するブログがないよ！', 'error');
+        return;
+      }
+
+      if (!currentViewingBlogId) {
+        showToast('更新対象のブログがないよ', 'error');
+        return;
+      }
+
+      // 現在のブログ情報を取得
+      const blogs = await getBlogs();
+      const existingBlog = blogs.find(b => b.id === currentViewingBlogId);
+      
+      if (!existingBlog) {
+        showToast('ブログが見つからない...', 'error');
+        return;
+      }
+
+      // プレビューからタイトル（h1）を取得
+      const previewFrame = document.getElementById('previewFrame');
+      const h1Element = previewFrame.querySelector('h1');
+      const blogTitle = h1Element ? h1Element.textContent.trim() : existingBlog.blogTitle;
+
+      // 既存のブログを削除して新しく保存（IDは変わる）
+      await deleteBlog(currentViewingBlogId);
+      
+      const updatedBlog = {
+        tripId: existingBlog.tripId,
+        tripName: existingBlog.tripName,
+        blogTitle: blogTitle,
+        style: existingBlog.style,
+        content: content,
+        createdAt: existingBlog.createdAt,
+        updatedAt: new Date().toISOString()
+      };
+
+      const newId = await saveBlog(updatedBlog);
+      currentViewingBlogId = newId;
+      
+      showToast('ブログを更新したよ！ 🔄', 'success');
       loadSavedBlogs();
     }
 
@@ -2132,6 +2206,15 @@ ${texts || '(メモなし)'}
         }
         
         document.getElementById('previewFrame').innerHTML = blog.content;
+        
+        // 現在表示中のブログIDを保持
+        currentViewingBlogId = blogId;
+        currentBlogTripId = blog.tripId;
+        currentBlogStyle = blog.style;
+        
+        // ボタンを「更新保存」に変更
+        updateSaveButtonState();
+        
         showToast('保存したブログを表示したよ！', 'success');
       }
     }
