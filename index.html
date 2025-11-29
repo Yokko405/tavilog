@@ -2069,11 +2069,12 @@ ${texts || '(メモなし)'}
       // プレビューからタイトル（h1）を取得（編集後の内容を反映）
       const previewFrame = document.getElementById('previewFrame');
       const h1Element = previewFrame.querySelector('h1');
-      const blogTitle = h1Element ? h1Element.textContent.trim() : (trip ? trip.name : '不明な旅行');
+      const blogTitle = h1Element ? h1Element.textContent.trim() : (trip ? trip.name : '無題');
       
       const blog = {
         tripId: currentBlogTripId,
-        tripName: blogTitle,
+        tripName: trip ? trip.name : '不明な旅行',  // 元の旅の名前
+        blogTitle: blogTitle,  // ブログのタイトル（編集可能）
         style: currentBlogStyle || 'casual',
         content: content,
         createdAt: new Date().toISOString()
@@ -2100,9 +2101,9 @@ ${texts || '(メモなし)'}
       container.innerHTML = blogs.map(blog => `
         <div class="saved-blog-item" style="background: white; border-radius: 12px; padding: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center;">
           <div style="flex: 1;">
-            <div style="font-weight: 600; color: #2D3436;">${blog.tripName}</div>
+            <div style="font-weight: 600; color: #2D3436;">${blog.blogTitle || blog.tripName}</div>
             <div style="font-size: 0.8rem; color: #888; margin-top: 0.25rem;">
-              ${new Date(blog.createdAt).toLocaleDateString('ja-JP')} 保存
+              🧳 ${blog.tripName} ・ ${new Date(blog.createdAt).toLocaleDateString('ja-JP')} 保存
             </div>
           </div>
           <div style="display: flex; gap: 0.5rem;">
