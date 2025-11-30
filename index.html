@@ -563,6 +563,11 @@
       color: white;
     }
 
+    .btn-pdf {
+      background: linear-gradient(135deg, #E63946, #C1121F);
+      color: white;
+    }
+
     .btn-action:hover {
       transform: translateY(-2px);
     }
@@ -982,6 +987,7 @@
       }
     }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
   <header>
@@ -1139,6 +1145,7 @@
             <button class="btn-action btn-save" id="saveBlogBtn" onclick="saveOrUpdateBlog()" style="background: linear-gradient(135deg, #4ECDC4, #44A08D); color: white;">💖 お気に入り保存</button>
             <button class="btn-action btn-copy" onclick="copyBlog()">📋 コピー</button>
             <button class="btn-action btn-download" onclick="downloadBlog()">💾 HTML保存</button>
+            <button class="btn-action btn-pdf" onclick="downloadPDF()">📄 PDF保存</button>
           </div>
         </div>
 
@@ -2291,6 +2298,40 @@ ${texts || '(メモなし)'}
       a.click();
       URL.revokeObjectURL(url);
       showToast('ダウンロードしたよ！ 💾', 'success');
+    }
+
+    // ブログをPDFでダウンロード
+    function downloadPDF() {
+      const content = document.getElementById('previewFrame').innerHTML;
+      if (!content || content.includes('preview-placeholder')) {
+        showToast('ブログを生成してからPDF保存してね！', 'error');
+        return;
+      }
+
+      showToast('PDF作成中... ⏳', 'info');
+
+      // PDF用の一時的な要素を作成
+      const element = document.createElement('div');
+      element.innerHTML = content;
+      element.style.padding = '20px';
+      element.style.fontFamily = "'Zen Maru Gothic', sans-serif";
+      element.style.lineHeight = '1.8';
+      element.style.color = '#2D3436';
+
+      const opt = {
+        margin: 10,
+        filename: 'travel-blog.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      html2pdf().set(opt).from(element).save().then(() => {
+        showToast('PDFをダウンロードしたよ！ 📄', 'success');
+      }).catch(err => {
+        console.error('PDF生成エラー:', err);
+        showToast('PDF生成に失敗したよ 😢', 'error');
+      });
     }
 
     // モーダル
