@@ -2227,6 +2227,36 @@ ${texts || '(メモなし)'}
       }
     }
 
+    // 既存のお気に入りブログから「タップで拡大」を削除
+    async function removeZoomHintFromSavedBlogs() {
+      const blogs = await getBlogs();
+      let updatedCount = 0;
+
+      for (const blog of blogs) {
+        const originalContent = blog.content;
+        // 「タップで拡大」のdivを削除
+        const updatedContent = originalContent.replace(
+          /<div class="photo-zoom-hint">🔍 タップで拡大<\/div>/g,
+          ''
+        );
+
+        if (originalContent !== updatedContent) {
+          await updateBlog(blog.id, {
+            ...blog,
+            content: updatedContent
+          });
+          updatedCount++;
+        }
+      }
+
+      // 現在表示中のブログを再読み込み
+      if (currentViewingBlogId) {
+        await viewSavedBlog(currentViewingBlogId);
+      }
+
+      showToast(`${updatedCount}件のブログを更新したよ！`, 'success');
+    }
+
     // ブログをダウンロード
     function downloadBlog() {
       const content = document.getElementById('previewFrame').innerHTML;
@@ -2484,11 +2514,11 @@ ${texts || '(メモなし)'}
     // ========== 初期化 ==========
 
     // ========== 初期化 ==========
-    
-    initDB().then(() => {
+
+    initDB().then(async () => {
       loadTrips();
       loadSavedBlogs();
-      
+
       // プロバイダーとAPIキーを復元
       const savedProvider = getProvider();
       document.getElementById('aiProvider').value = savedProvider;
@@ -2497,6 +2527,13 @@ ${texts || '(メモなし)'}
         document.getElementById('apiKeyInput').value = savedKey;
       }
       updateApiKeyStatus();
+
+      // 既存ブログの「タップで拡大」を一度だけ削除（マイグレーション）
+      const migrationKey = 'tavilog_zoom_hint_removed';
+      if (!localStorage.getItem(migrationKey)) {
+        await removeZoomHintFromSavedBlogs();
+        localStorage.setItem(migrationKey, 'true');
+      }
 
       console.log('TaviLog initialized! 🚀');
     });
