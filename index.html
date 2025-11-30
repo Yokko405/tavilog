@@ -1979,7 +1979,6 @@ ${texts || '(メモなし)'}
         const imgTag = `
           <div class="photo-thumbnail" onclick="openLightbox('${photo.content.replace(/'/g, "\\'")}')">
             <img src="${photo.content}" alt="旅の写真${index + 1}">
-            <div class="photo-zoom-hint">🔍 タップで拡大</div>
           </div>
         `;
         blogHtml = blogHtml.replace(placeholder, imgTag);
@@ -2225,6 +2224,43 @@ ${texts || '(メモなし)'}
         await deleteBlog(blogId);
         showToast('ブログを削除したよ', 'success');
         loadSavedBlogs();
+      }
+    }
+
+    // 既存のお気に入りブログから「タップで拡大」を削除
+    async function removeZoomHintFromSavedBlogs() {
+      console.log('マイグレーション開始: 既存ブログから「タップで拡大」を削除');
+      const blogs = await getBlogs();
+      console.log('保存済みブログ数:', blogs.length);
+      let updatedCount = 0;
+
+      for (const blog of blogs) {
+        const originalContent = blog.content;
+        // 「タップで拡大」のdivを削除（改行や空白の有無に対応）
+        const updatedContent = originalContent.replace(
+          /<div\s+class="photo-zoom-hint">🔍\s*タップで拡大<\/div>/g,
+          ''
+        );
+
+        if (originalContent !== updatedContent) {
+          console.log(`ブログID ${blog.id} を更新`);
+          await updateBlog(blog.id, {
+            ...blog,
+            content: updatedContent
+          });
+          updatedCount++;
+        }
+      }
+
+      console.log(`マイグレーション完了: ${updatedCount}件のブログを更新`);
+
+      // 現在表示中のブログを再読み込み
+      if (currentViewingBlogId) {
+        await viewSavedBlog(currentViewingBlogId);
+      }
+
+      if (updatedCount > 0) {
+        showToast(`${updatedCount}件のブログを更新したよ！`, 'success');
       }
     }
 
@@ -2485,11 +2521,11 @@ ${texts || '(メモなし)'}
     // ========== 初期化 ==========
 
     // ========== 初期化 ==========
-    
-    initDB().then(() => {
+
+    initDB().then(async () => {
       loadTrips();
       loadSavedBlogs();
-      
+
       // プロバイダーとAPIキーを復元
       const savedProvider = getProvider();
       document.getElementById('aiProvider').value = savedProvider;
@@ -2498,6 +2534,18 @@ ${texts || '(メモなし)'}
         document.getElementById('apiKeyInput').value = savedKey;
       }
       updateApiKeyStatus();
+
+      // 既存ブログの「タップで拡大」を一度だけ削除（マイグレーション）
+      const migrationKey = 'tavilog_zoom_hint_removed';
+      // デバッグ: 強制的にマイグレーションを実行
+      localStorage.removeItem(migrationKey);
+      if (!localStorage.getItem(migrationKey)) {
+        console.log('マイグレーション実行チェック: フラグなし、実行します');
+        await removeZoomHintFromSavedBlogs();
+        localStorage.setItem(migrationKey, 'true');
+      } else {
+        console.log('マイグレーション実行チェック: 既に実行済み');
+      }
 
       console.log('TaviLog initialized! 🚀');
     });
