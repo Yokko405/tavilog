@@ -2236,16 +2236,19 @@ ${texts || '(メモなし)'}
 
       for (const blog of blogs) {
         const originalContent = blog.content;
-        // 「タップで拡大」のdivを削除（改行や空白の有無に対応）
+        // より柔軟なパターンで「タップで拡大」のdivを削除
         const updatedContent = originalContent.replace(
-          /<div\s+class="photo-zoom-hint">🔍\s*タップで拡大<\/div>/g,
+          /<div[^>]*class=["']photo-zoom-hint["'][^>]*>[\s\S]*?<\/div>/gi,
           ''
         );
 
         if (originalContent !== updatedContent) {
           console.log(`ブログID ${blog.id} を更新`);
-          await updateBlog(blog.id, {
+          // ブログを更新（削除して再保存）
+          await deleteBlog(blog.id);
+          await saveBlog({
             ...blog,
+            id: undefined,  // 新しいIDで保存
             content: updatedContent
           });
           updatedCount++;
@@ -2254,13 +2257,9 @@ ${texts || '(メモなし)'}
 
       console.log(`マイグレーション完了: ${updatedCount}件のブログを更新`);
 
-      // 現在表示中のブログを再読み込み
-      if (currentViewingBlogId) {
-        await viewSavedBlog(currentViewingBlogId);
-      }
-
       if (updatedCount > 0) {
         showToast(`${updatedCount}件のブログを更新したよ！`, 'success');
+        await loadSavedBlogs();
       }
     }
 
