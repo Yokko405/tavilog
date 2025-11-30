@@ -1979,7 +1979,6 @@ ${texts || '(メモなし)'}
         const imgTag = `
           <div class="photo-thumbnail" onclick="openLightbox('${photo.content.replace(/'/g, "\\'")}')">
             <img src="${photo.content}" alt="旅の写真${index + 1}">
-            <div class="photo-zoom-hint">🔍 タップで拡大</div>
           </div>
         `;
         blogHtml = blogHtml.replace(placeholder, imgTag);
