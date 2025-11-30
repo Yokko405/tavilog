@@ -2246,9 +2246,9 @@ ${texts || '(メモなし)'}
           console.log(`ブログID ${blog.id} を更新`);
           // ブログを更新（削除して再保存）
           await deleteBlog(blog.id);
+          const { id, ...blogWithoutId } = blog;  // idを除外
           await saveBlog({
-            ...blog,
-            id: undefined,  // 新しいIDで保存
+            ...blogWithoutId,
             content: updatedContent
           });
           updatedCount++;
