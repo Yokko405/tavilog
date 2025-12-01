@@ -1268,6 +1268,9 @@
   <div class="toast" id="toast"></div>
 
   <script>
+    // GitHub Secretsから注入されるAPIキー（デプロイ時に置換される）
+    const INJECTED_GOOGLE_API_KEY = 'YOUR_GOOGLE_API_KEY_HERE';
+
     // IndexedDBのセットアップ
     const DB_NAME = 'TaviLogDB';
     const DB_VERSION = 1;
@@ -2428,6 +2431,12 @@ ${texts || '(メモなし)'}
 
     function getApiKey() {
       const provider = getProvider();
+
+      // Googleプロバイダーの場合、注入されたAPIキーがあればそれを使用
+      if (provider === 'google' && INJECTED_GOOGLE_API_KEY && INJECTED_GOOGLE_API_KEY !== 'YOUR_GOOGLE_API_KEY_HERE') {
+        return INJECTED_GOOGLE_API_KEY;
+      }
+
       return localStorage.getItem(`tavilog_api_key_${provider}`) || '';
     }
 

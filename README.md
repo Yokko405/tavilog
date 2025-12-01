@@ -33,8 +33,25 @@
 
 ## 🔑 APIキー
 
-OpenAI または Anthropic のAPIキーが必要です。
+Google Gemini、OpenAI、または Anthropic のAPIキーが必要です。
 アプリ上部の入力欄に設定してください。
+
+### Cloudflare Pagesで環境変数を設定する場合
+
+Cloudflare Pagesにデプロイする場合、Google APIキーを環境変数として安全に管理できます：
+
+1. Cloudflareダッシュボードにログイン
+2. Pages → あなたのプロジェクト → Settings → Environment variables
+3. 以下の環境変数を追加：
+   - **Variable name**: `GOOGLE_API_KEY`
+   - **Value**: Google AI Studioで取得したAPIキー（[こちら](https://aistudio.google.com/apikey)で取得）
+   - **Environment**: Production（本番環境）
+4. Settings → Builds & deployments で以下を設定：
+   - **Build command**: `./build.sh`
+   - **Build output directory**: `/`（ルートディレクトリ）
+5. 変更を保存してサイトを再デプロイ
+
+`build.sh` スクリプトがビルド時に自動的にAPIキーをHTMLに注入します。
 
 ## 📱 iPhoneホーム画面に追加
 

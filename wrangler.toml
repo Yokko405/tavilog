@@ -1,0 +1,9 @@
+name = "tavilog"
+compatibility_date = "2024-01-01"
+
+[site]
+bucket = "."
+
+[env.production.vars]
+# 環境変数はCloudflareダッシュボードから設定してください
+# GOOGLE_API_KEY = "your-key-here" (ダッシュボードで設定)
