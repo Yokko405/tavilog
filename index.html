@@ -563,11 +563,6 @@
       color: white;
     }
 
-    .btn-pdf {
-      background: linear-gradient(135deg, #E63946, #C1121F);
-      color: white;
-    }
-
     .btn-action:hover {
       transform: translateY(-2px);
     }
@@ -987,7 +982,6 @@
       }
     }
   </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
   <header>
@@ -1145,7 +1139,6 @@
             <button class="btn-action btn-save" id="saveBlogBtn" onclick="saveOrUpdateBlog()" style="background: linear-gradient(135deg, #4ECDC4, #44A08D); color: white;">💖 お気に入り保存</button>
             <button class="btn-action btn-copy" onclick="copyBlog()">📋 コピー</button>
             <button class="btn-action btn-download" onclick="downloadBlog()">💾 HTML保存</button>
-            <button class="btn-action btn-pdf" onclick="downloadPDF()">📄 PDF保存</button>
           </div>
         </div>
 
@@ -1986,6 +1979,7 @@ ${texts || '(メモなし)'}
         const imgTag = `
           <div class="photo-thumbnail" onclick="openLightbox('${photo.content.replace(/'/g, "\\'")}')">
             <img src="${photo.content}" alt="旅の写真${index + 1}">
+            <div class="photo-zoom-hint">🔍 タップで拡大</div>
           </div>
         `;
         blogHtml = blogHtml.replace(placeholder, imgTag);
@@ -2234,42 +2228,6 @@ ${texts || '(メモなし)'}
       }
     }
 
-    // 既存のお気に入りブログから「タップで拡大」を削除
-    async function removeZoomHintFromSavedBlogs() {
-      console.log('マイグレーション開始: 既存ブログから「タップで拡大」を削除');
-      const blogs = await getBlogs();
-      console.log('保存済みブログ数:', blogs.length);
-      let updatedCount = 0;
-
-      for (const blog of blogs) {
-        const originalContent = blog.content;
-        // より柔軟なパターンで「タップで拡大」のdivを削除
-        const updatedContent = originalContent.replace(
-          /<div[^>]*class=["']photo-zoom-hint["'][^>]*>[\s\S]*?<\/div>/gi,
-          ''
-        );
-
-        if (originalContent !== updatedContent) {
-          console.log(`ブログID ${blog.id} を更新`);
-          // ブログを更新（削除して再保存）
-          await deleteBlog(blog.id);
-          const { id, ...blogWithoutId } = blog;  // idを除外
-          await saveBlog({
-            ...blogWithoutId,
-            content: updatedContent
-          });
-          updatedCount++;
-        }
-      }
-
-      console.log(`マイグレーション完了: ${updatedCount}件のブログを更新`);
-
-      if (updatedCount > 0) {
-        showToast(`${updatedCount}件のブログを更新したよ！`, 'success');
-        await loadSavedBlogs();
-      }
-    }
-
     // ブログをダウンロード
     function downloadBlog() {
       const content = document.getElementById('previewFrame').innerHTML;
@@ -2298,67 +2256,6 @@ ${texts || '(メモなし)'}
       a.click();
       URL.revokeObjectURL(url);
       showToast('ダウンロードしたよ！ 💾', 'success');
-    }
-
-    // ブログをPDFでダウンロード
-    function downloadPDF() {
-      const content = document.getElementById('previewFrame').innerHTML;
-      if (!content || content.includes('preview-placeholder')) {
-        showToast('ブログを生成してからPDF保存してね！', 'error');
-        return;
-      }
-
-      showToast('PDF作成中... ⏳', 'info');
-
-      // PDF用の一時的な要素を作成
-      const element = document.createElement('div');
-      element.innerHTML = content;
-      element.style.padding = '20px';
-      element.style.fontFamily = "'Zen Maru Gothic', sans-serif";
-      element.style.lineHeight = '1.8';
-      element.style.color = '#2D3436';
-
-      // 写真要素にページ区切り回避のスタイルを追加
-      const photos = element.querySelectorAll('.photo-thumbnail');
-      photos.forEach(photo => {
-        photo.style.pageBreakInside = 'avoid';
-        photo.style.breakInside = 'avoid';
-        photo.style.marginTop = '10px';
-        photo.style.marginBottom = '10px';
-      });
-
-      // 見出しもページ区切りを回避
-      const headings = element.querySelectorAll('h2, h3');
-      headings.forEach(heading => {
-        heading.style.pageBreakAfter = 'avoid';
-        heading.style.breakAfter = 'avoid';
-      });
-
-      const opt = {
-        margin: 10,
-        filename: 'travel-blog.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: {
-          scale: 2,
-          useCORS: true,
-          logging: false
-        },
-        jsPDF: {
-          unit: 'mm',
-          format: 'a4',
-          orientation: 'portrait'
-        },
-        pagebreak: {
-          mode: ['avoid-all', 'css', 'legacy']
-        }
-      };
-
-      html2pdf().set(opt).from(element).save().then(() => {
-        showToast('PDFをダウンロードしたよ！ 📄', 'success');
-      }).catch(err => {
-        console.error('PDF生成エラー:', err);
-        showToast('PDF生成に失敗したよ 😢', 'error');
-      });
     }
 
     // モーダル
@@ -2417,6 +2314,80 @@ ${texts || '(メモなし)'}
       }, 3000);
     }
 
+    // ========== Cloudflare Workers連携 ==========
+    const WORKER_URL = 'https://tavilog-api2.hiyume-2.workers.dev';
+    
+    // ユーザーIDを取得または生成
+    function getUserId() {
+      let userId = localStorage.getItem('tavilog_user_id');
+      if (!userId) {
+        userId = 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+        localStorage.setItem('tavilog_user_id', userId);
+      }
+      return userId;
+    }
+
+    // クラウドから設定を読み込み
+    async function loadSettingsFromCloud() {
+      try {
+        const userId = getUserId();
+        const response = await fetch(`${WORKER_URL}/api/settings?userId=${userId}`);
+        if (!response.ok) throw new Error('Failed to load');
+        const settings = await response.json();
+        
+        if (settings.provider) {
+          localStorage.setItem('tavilog_provider', settings.provider);
+          document.getElementById('aiProvider').value = settings.provider;
+        }
+        if (settings.apiKeys) {
+          for (const [provider, key] of Object.entries(settings.apiKeys)) {
+            if (key) {
+              localStorage.setItem(`tavilog_api_key_${provider}`, key);
+            }
+          }
+        }
+        
+        // 現在のプロバイダーのAPIキーを表示
+        const currentKey = getApiKey();
+        if (currentKey) {
+          document.getElementById('apiKeyInput').value = currentKey;
+        }
+        updateApiKeyStatus();
+        
+        return true;
+      } catch (error) {
+        console.log('Cloud sync not available:', error.message);
+        return false;
+      }
+    }
+
+    // クラウドに設定を保存
+    async function saveSettingsToCloud() {
+      try {
+        const userId = getUserId();
+        const settings = {
+          provider: getProvider(),
+          apiKeys: {
+            google: localStorage.getItem('tavilog_api_key_google') || '',
+            openai: localStorage.getItem('tavilog_api_key_openai') || '',
+            anthropic: localStorage.getItem('tavilog_api_key_anthropic') || ''
+          }
+        };
+        
+        const response = await fetch(`${WORKER_URL}/api/settings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, settings })
+        });
+        
+        if (!response.ok) throw new Error('Failed to save');
+        return true;
+      } catch (error) {
+        console.log('Cloud save failed:', error.message);
+        return false;
+      }
+    }
+
     // APIキー・プロバイダー管理
     function getProvider() {
       return localStorage.getItem('tavilog_provider') || 'google';
@@ -2443,7 +2414,9 @@ ${texts || '(メモなし)'}
       const status = document.getElementById('apiKeyStatus');
       
       let isValid = false;
-      if (provider === 'openai' && key && key.startsWith('sk-')) {
+      if (provider === 'google' && key && key.startsWith('AIza')) {
+        isValid = true;
+      } else if (provider === 'openai' && key && key.startsWith('sk-')) {
         isValid = true;
       } else if (provider === 'anthropic' && key && key.startsWith('sk-ant-')) {
         isValid = true;
@@ -2468,14 +2441,18 @@ ${texts || '(メモなし)'}
       const savedKey = getApiKey();
       document.getElementById('apiKeyInput').value = savedKey;
       updateApiKeyStatus();
-      const providerName = e.target.value === 'openai' ? 'ChatGPT' : 'Claude';
-      showToast(`${providerName}に切り替えたよ！`, 'success');
+      const providerNames = { google: 'Gemini', openai: 'ChatGPT', anthropic: 'Claude' };
+      showToast(`${providerNames[e.target.value] || e.target.value}に切り替えたよ！`, 'success');
+      // クラウドにも保存
+      saveSettingsToCloud();
     });
 
     // APIキー入力イベント
     document.getElementById('apiKeyInput').addEventListener('change', (e) => {
       saveApiKey(e.target.value);
       showToast('APIキーを保存したよ！ 🔑', 'success');
+      // クラウドにも保存
+      saveSettingsToCloud();
     });
 
     document.getElementById('apiKeyInput').addEventListener('input', (e) => {
@@ -2484,7 +2461,9 @@ ${texts || '(メモなし)'}
       const status = document.getElementById('apiKeyStatus');
       
       let isValid = false;
-      if (provider === 'openai' && key && key.startsWith('sk-')) {
+      if (provider === 'google' && key && key.startsWith('AIza')) {
+        isValid = true;
+      } else if (provider === 'openai' && key && key.startsWith('sk-')) {
         isValid = true;
       } else if (provider === 'anthropic' && key && key.startsWith('sk-ant-')) {
         isValid = true;
@@ -2586,14 +2565,12 @@ ${texts || '(メモなし)'}
     // clearAllData は上部で定義済み（引数showConfirm対応版）
 
     // ========== 初期化 ==========
-
-    // ========== 初期化 ==========
-
+    
     initDB().then(async () => {
       loadTrips();
       loadSavedBlogs();
-
-      // プロバイダーとAPIキーを復元
+      
+      // まずローカルから復元
       const savedProvider = getProvider();
       document.getElementById('aiProvider').value = savedProvider;
       const savedKey = getApiKey();
@@ -2602,16 +2579,10 @@ ${texts || '(メモなし)'}
       }
       updateApiKeyStatus();
 
-      // 既存ブログの「タップで拡大」を一度だけ削除（マイグレーション）
-      const migrationKey = 'tavilog_zoom_hint_removed';
-      // デバッグ: 強制的にマイグレーションを実行
-      localStorage.removeItem(migrationKey);
-      if (!localStorage.getItem(migrationKey)) {
-        console.log('マイグレーション実行チェック: フラグなし、実行します');
-        await removeZoomHintFromSavedBlogs();
-        localStorage.setItem(migrationKey, 'true');
-      } else {
-        console.log('マイグレーション実行チェック: 既に実行済み');
+      // クラウドから設定を読み込み（あれば上書き）
+      const cloudLoaded = await loadSettingsFromCloud();
+      if (cloudLoaded) {
+        console.log('☁️ Cloud settings loaded');
       }
 
       console.log('TaviLog initialized! 🚀');
