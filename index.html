@@ -615,14 +615,9 @@
       to { transform: rotate(360deg); }
     }
 
-    /* APIキー設定バー */
+    /* APIキー設定バー（非表示） */
     .api-key-bar {
-      background: linear-gradient(135deg, #2D3436 0%, #636E72 100%);
-      padding: 0.75rem 1rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      flex-wrap: wrap;
+      display: none; /* サーバーからAPIキーを取得するため非表示 */
     }
 
     .api-key-bar label {
@@ -2327,6 +2322,25 @@ ${texts || '(メモなし)'}
       return userId;
     }
 
+    // サーバーからAPIキーを取得
+    async function loadApiKeyFromServer() {
+      try {
+        const provider = getProvider();
+        const response = await fetch(`${WORKER_URL}/api/key?provider=${provider}`);
+        if (!response.ok) throw new Error('Failed to load API key');
+        const data = await response.json();
+        if (data.key) {
+          localStorage.setItem(`tavilog_api_key_${provider}`, data.key);
+          console.log(`☁️ ${provider} API key loaded from server`);
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.log('API key fetch failed:', error.message);
+        return false;
+      }
+    }
+
     // クラウドから設定を読み込み
     async function loadSettingsFromCloud() {
       try {
@@ -2570,19 +2584,10 @@ ${texts || '(メモなし)'}
       loadTrips();
       loadSavedBlogs();
       
-      // まずローカルから復元
-      const savedProvider = getProvider();
-      document.getElementById('aiProvider').value = savedProvider;
-      const savedKey = getApiKey();
-      if (savedKey) {
-        document.getElementById('apiKeyInput').value = savedKey;
-      }
-      updateApiKeyStatus();
-
-      // クラウドから設定を読み込み（あれば上書き）
-      const cloudLoaded = await loadSettingsFromCloud();
-      if (cloudLoaded) {
-        console.log('☁️ Cloud settings loaded');
+      // サーバーからAPIキーを自動取得
+      const apiKeyLoaded = await loadApiKeyFromServer();
+      if (apiKeyLoaded) {
+        console.log('☁️ API key loaded from server');
       }
 
       console.log('TaviLog initialized! 🚀');
