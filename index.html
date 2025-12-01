@@ -1003,10 +1003,10 @@
       <option value="openai">ChatGPT (OpenAI)</option>
       <option value="anthropic">Claude (Anthropic)</option>
     </select>
-    <label>🔑</label>
+    <label id="apiKeyLabel">🔑</label>
     <input type="password" class="api-key-input" id="apiKeyInput" placeholder="APIキーを入力...">
     <span class="api-key-status invalid" id="apiKeyStatus">未設定</span>
-    <button class="api-help-btn" onclick="openApiHelpModal()" title="APIキーの取得方法">❓</button>
+    <button class="api-help-btn" id="apiHelpBtn" onclick="openApiHelpModal()" title="APIキーの取得方法">❓</button>
   </div>
 
   <div class="container">
@@ -2477,7 +2477,22 @@ ${texts || '(メモなし)'}
       const savedKey = getApiKey();
       document.getElementById('apiKeyInput').value = savedKey;
       updateApiKeyStatus();
-      const providerName = e.target.value === 'openai' ? 'ChatGPT' : 'Claude';
+
+      // 環境変数でAPIキーが自動設定されている場合は入力欄を非表示
+      const provider = e.target.value;
+      if (provider === 'google' && INJECTED_GOOGLE_API_KEY && INJECTED_GOOGLE_API_KEY !== 'YOUR_GOOGLE_API_KEY_HERE') {
+        document.getElementById('apiKeyLabel').style.display = 'none';
+        document.getElementById('apiKeyInput').style.display = 'none';
+        document.getElementById('apiKeyStatus').style.display = 'none';
+        document.getElementById('apiHelpBtn').style.display = 'none';
+      } else {
+        document.getElementById('apiKeyLabel').style.display = '';
+        document.getElementById('apiKeyInput').style.display = '';
+        document.getElementById('apiKeyStatus').style.display = '';
+        document.getElementById('apiHelpBtn').style.display = '';
+      }
+
+      const providerName = e.target.value === 'openai' ? 'ChatGPT' : e.target.value === 'google' ? 'Gemini' : 'Claude';
       showToast(`${providerName}に切り替えたよ！`, 'success');
     });
 
@@ -2610,6 +2625,14 @@ ${texts || '(メモなし)'}
         document.getElementById('apiKeyInput').value = savedKey;
       }
       updateApiKeyStatus();
+
+      // 環境変数でAPIキーが自動設定されている場合は入力欄を非表示
+      if (savedProvider === 'google' && INJECTED_GOOGLE_API_KEY && INJECTED_GOOGLE_API_KEY !== 'YOUR_GOOGLE_API_KEY_HERE') {
+        document.getElementById('apiKeyLabel').style.display = 'none';
+        document.getElementById('apiKeyInput').style.display = 'none';
+        document.getElementById('apiKeyStatus').style.display = 'none';
+        document.getElementById('apiHelpBtn').style.display = 'none';
+      }
 
       // 既存ブログの「タップで拡大」を一度だけ削除（マイグレーション）
       const migrationKey = 'tavilog_zoom_hint_removed';
