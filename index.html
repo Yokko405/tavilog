@@ -2256,7 +2256,19 @@ ${texts || '(メモなし)'}
 
     // ブログをPDFで印刷/保存
     function downloadPdf() {
-      const content = document.getElementById('previewFrame').innerHTML.trim();
+      const previewFrame = document.getElementById('previewFrame');
+      const cloned = previewFrame.cloneNode(true);
+
+      // 編集用UIを除去
+      cloned.querySelectorAll('.photo-edit-controls').forEach(el => el.remove());
+      // 画像の装飾を除去
+      cloned.querySelectorAll('img').forEach(img => {
+        img.style.boxShadow = 'none';
+        img.style.border = 'none';
+        img.style.background = 'transparent';
+      });
+
+      const content = cloned.innerHTML.trim();
       if (!content) {
         showToast('先にブログを生成してね！', 'error');
         return;
