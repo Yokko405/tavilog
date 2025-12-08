@@ -1899,20 +1899,37 @@ ${texts || '(メモなし)'}
       }
 
       const trip = { name, date, createdAt: new Date().toISOString() };
-      await addTrip(trip);
+      const newTripId = await addTrip(trip);
       closeNewTripModal();
-      await loadTrips();
+      await loadTrips(newTripId);
       showToast('新しい旅を作成したよ！ 🧳', 'success');
     }
 
     // 旅行一覧を読み込み
-    async function loadTrips() {
+    async function loadTrips(selectedTripId = null) {
       const trips = await getTrips();
       const options = trips.map(t => `<option value="${t.id}">${t.name} (${t.date})</option>`).join('');
+      const addTabSelect = document.getElementById('tripSelect');
+      const materialsSelect = document.getElementById('materialsFilterTrip');
+      const generateSelect = document.getElementById('generateTripSelect');
+
+      const targetTripId = selectedTripId ?? addTabSelect.value;
+      const targetGenerateTripId = selectedTripId ?? generateSelect.value;
+      const targetMaterialsTripId = materialsSelect.value;
       
-      document.getElementById('tripSelect').innerHTML = '<option value="">旅行を選択...</option>' + options;
-      document.getElementById('materialsFilterTrip').innerHTML = '<option value="">すべての旅行</option>' + options;
-      document.getElementById('generateTripSelect').innerHTML = '<option value="">生成する旅行を選択...</option>' + options;
+      addTabSelect.innerHTML = '<option value="">旅行を選択...</option>' + options;
+      materialsSelect.innerHTML = '<option value="">すべての旅行</option>' + options;
+      generateSelect.innerHTML = '<option value="">生成する旅行を選択...</option>' + options;
+
+      if (targetTripId && addTabSelect.querySelector(`option[value="${targetTripId}"]`)) {
+        addTabSelect.value = String(targetTripId);
+      }
+      if (targetMaterialsTripId && materialsSelect.querySelector(`option[value="${targetMaterialsTripId}"]`)) {
+        materialsSelect.value = String(targetMaterialsTripId);
+      }
+      if (targetGenerateTripId && generateSelect.querySelector(`option[value="${targetGenerateTripId}"]`)) {
+        generateSelect.value = String(targetGenerateTripId);
+      }
     }
 
     // トースト表示
