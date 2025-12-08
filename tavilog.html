@@ -1933,10 +1933,22 @@ ${texts || '(メモなし)'}
       printWindow.document.write(html);
       printWindow.document.close();
       printWindow.focus();
-      printWindow.print();
-      setTimeout(() => {
-        printWindow.close();
-      }, 500);
+
+      const images = Array.from(printWindow.document.images || []);
+      const waitForImages = Promise.all(images.map(img => {
+        if (img.complete && img.naturalWidth !== 0) return Promise.resolve();
+        return new Promise(resolve => {
+          img.addEventListener('load', resolve);
+          img.addEventListener('error', resolve);
+        });
+      }));
+
+      waitForImages.then(() => {
+        printWindow.print();
+        setTimeout(() => {
+          printWindow.close();
+        }, 300);
+      });
     }
 
     // モーダル
