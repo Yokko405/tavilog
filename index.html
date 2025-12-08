@@ -2280,8 +2280,11 @@ ${texts || '(メモなし)'}
     @page { margin: 12mm; }
     body { font-family: 'Zen Maru Gothic', sans-serif; line-height: 1.7; color: #2D3436; }
     h1,h2,h3 { color: #A66CFF; page-break-after: avoid; }
-    img { max-width: 100%; border-radius: 10px; margin: 0.5rem 0; page-break-inside: avoid; }
+    img { max-width: 100%; margin: 0.5rem 0; page-break-inside: avoid; box-shadow: none !important; border: none !important; background: transparent !important; }
     .blog-content { max-width: 800px; margin: 0 auto; }
+    .photo-edit-controls { display: none !important; }
+    .photo-block-wrapper { margin: 1rem 0; }
+    .photo-block-wrapper img { box-shadow: none !important; border: none !important; background: transparent !important; }
   </style>
 </head>
 <body>
