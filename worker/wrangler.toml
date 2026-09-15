@@ -10,9 +10,17 @@ enabled = true
 [observability.logs]
 enabled = true
 
-[[kv_namespaces]]
-binding = "TAVILOG_KV"
-id = "177d45e0f7a24078b3e65d02d14d0dc8"
+# 15 req / 60秒 / IP。IPごとに1つのDurable Objectインスタンスへ決定的に
+# ルーティングされ、同一インスタンスへのリクエストは直列処理されるため
+# 同時アクセスでもカウントの取りこぼしがない(KVやRate Limiting bindingは
+# eventual consistencyのため実測で上限を超えて通過することを確認済み)。
+[[durable_objects.bindings]]
+name = "RATE_LIMITER_DO"
+class_name = "RateLimiterDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RateLimiterDO"]
 
 # GEMINI_API_KEY は `wrangler secret put GEMINI_API_KEY` で設定するシークレット。
 # このファイルには含めない(README参照)。
