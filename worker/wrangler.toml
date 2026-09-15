@@ -1,0 +1,18 @@
+name = "tavilog-api2"
+main = "worker.js"
+compatibility_date = "2025-12-01"
+account_id = "2232dd6ea01939bd7292161d44448277"
+preview_urls = false
+
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+
+[[kv_namespaces]]
+binding = "TAVILOG_KV"
+id = "177d45e0f7a24078b3e65d02d14d0dc8"
+
+# GEMINI_API_KEY は `wrangler secret put GEMINI_API_KEY` で設定するシークレット。
+# このファイルには含めない(README参照)。
