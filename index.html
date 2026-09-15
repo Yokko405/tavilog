@@ -1743,8 +1743,9 @@
       // APIキーとプロバイダーチェック
       const apiKey = getApiKey();
       const provider = getProvider();
-      
-      if (!apiKey) {
+
+      // Googleはサーバー側プロキシがキーを保持するため、フロントでのキー入力は不要
+      if (!apiKey && provider !== 'google') {
         throw new Error('APIキーを設定してね！ページ上部の入力欄にAPIキーを入力してください。');
       }
 
@@ -1804,7 +1805,8 @@ ${texts || '(メモなし)'}
             }
           });
 
-          response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+          // 生のAPIキーはフロントに置かず、Worker側プロキシ経由でGeminiを呼び出す
+          response = await fetch(`${WORKER_URL}/api/generate?provider=google`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -1812,10 +1814,7 @@ ${texts || '(メモなし)'}
             body: JSON.stringify({
               contents: [{
                 parts: parts
-              }],
-              generationConfig: {
-                maxOutputTokens: 4000
-              }
+              }]
             })
           });
 
