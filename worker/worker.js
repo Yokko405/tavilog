@@ -17,6 +17,8 @@ const RATE_WINDOW_MS = 60000;
 // IPごとに1インスタンスへ決定的にルーティングされ、同一インスタンスへの
 // リクエストは直列実行されるため、Workers Rate Limiting binding(local
 // cache方式でisolateをまたぐと合算されない)と違い、カウントの取りこぼしがない。
+// 固定ウィンドウ(60秒ごとにリセット)だと境界をまたいで最大30件通り得るため、
+// 直近60秒のリクエスト時刻を保持するrolling windowで厳密に守る。
 export class RateLimiterDO {
   constructor(ctx) {
     this.ctx = ctx;
@@ -24,17 +26,18 @@ export class RateLimiterDO {
 
   async fetch() {
     const now = Date.now();
-    let state = (await this.ctx.storage.get('state')) || { windowStart: now, count: 0 };
-    if (now - state.windowStart >= RATE_WINDOW_MS) {
-      state = { windowStart: now, count: 0 };
+    const cutoff = now - RATE_WINDOW_MS;
+    let timestamps = (await this.ctx.storage.get('timestamps')) || [];
+    timestamps = timestamps.filter((t) => t > cutoff);
+
+    if (timestamps.length >= RATE_LIMIT) {
+      const retryAfterSec = Math.max(1, Math.ceil((timestamps[0] + RATE_WINDOW_MS - now) / 1000));
+      await this.ctx.storage.put('timestamps', timestamps);
+      return Response.json({ success: false, retryAfter: retryAfterSec });
     }
 
-    if (state.count >= RATE_LIMIT) {
-      return Response.json({ success: false });
-    }
-
-    state.count += 1;
-    await this.ctx.storage.put('state', state);
+    timestamps.push(now);
+    await this.ctx.storage.put('timestamps', timestamps);
     return Response.json({ success: true });
   }
 }
@@ -100,11 +103,11 @@ async function handleRequest(request, env, origin, headers) {
     const doId = env.RATE_LIMITER_DO.idFromName(ip);
     const doStub = env.RATE_LIMITER_DO.get(doId);
     const doResponse = await doStub.fetch('https://rate-limiter/check');
-    const { success: withinLimit } = await doResponse.json();
+    const { success: withinLimit, retryAfter } = await doResponse.json();
     if (!withinLimit) {
       return new Response(JSON.stringify({ error: 'Too many requests, please try again later' }), {
         status: 429,
-        headers: { ...headers, 'Content-Type': 'application/json' }
+        headers: { ...headers, 'Content-Type': 'application/json', 'Retry-After': String(retryAfter) }
       });
     }
 
