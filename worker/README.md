@@ -21,10 +21,18 @@ tavilog(`https://yokko405.github.io/tavilog/`)から呼び出される、Gemini 
 ## セキュリティ上の制約(`/api/generate`)
 
 - CORSは `https://yokko405.github.io` のみ許可(それ以外は403)
-- レート制限: 15 req/min/IP(`TAVILOG_KV` を使ったカウンタ)
+- レート制限: 15 req/60秒/IP。`RateLimiterDO`(Durable Object)を使用。IPごとに1インスタンスへ
+  決定的にルーティングされ、同一インスタンスへのリクエストは直列処理されるため厳密にカウントできる。
+  KVのget->put方式(同一キー書込1回/秒、eventual consistency)や、Cloudflare Workers Rate Limiting
+  binding(isolateごとにローカルキャッシュされ"permissive, eventually consistent")は実測で
+  上限を大きく超えて通過することを確認済みのため不採用
+- Gemini APIキーは `x-goog-api-key` ヘッダーで渡す(URLクエリに入れない。Observabilityのトレースに
+  URLが残る経路を避けるため)
 - `generationConfig.maxOutputTokens` はクライアントの指定を無視し、サーバー側で常に4000に固定
-- リクエストボディは15MB上限
-- Gemini呼び出しの失敗時、URL(APIキーを含む)や例外の生テキストはレスポンス・ログのどちらにも出力しない(汎用エラーメッセージのみ返す)
+- リクエストボディは15MB上限。`Content-Length`ヘッダーは信頼せず、実際に読み込んだバイト数で判定
+  (`Content-Length`なし/chunkedでの回避を防ぐ)
+- Gemini呼び出しの失敗時、URL(APIキーを含む)や例外の生テキスト、Geminiからの非2xx応答本文は
+  レスポンス・ログのどちらにも出力しない(汎用エラーメッセージのみ返す)
 
 ## デプロイ
 
@@ -33,7 +41,7 @@ cd worker
 npx wrangler deploy
 ```
 
-`wrangler.toml` の `account_id` ・Worker名(`tavilog-api2`)・KVバインディング(`TAVILOG_KV`)は本番と一致させてあるため、認証済みの `wrangler` があればそのままデプロイできる。
+`wrangler.toml` の `account_id` ・Worker名(`tavilog-api2`)・Durable Objectバインディング(`RATE_LIMITER_DO`)は本番と一致させてあるため、認証済みの `wrangler` があればそのままデプロイできる。
 
 **デプロイ前に必ず `--dry-run` で差分を確認すること**(意図しない設定変更が本番に混ざるのを防ぐため):
 
